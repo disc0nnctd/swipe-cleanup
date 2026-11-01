@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Photo Swipe</title>
+<style>
+:root{--photos:#22a06b;--drive:#c99a1c;--local:#3b7ddd;--delete:#d64545;--bg:#0f1115;--card:#1a1d24;--mut:#9aa3b2}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:#eef1f6;font:15px/1.35 system-ui,-apple-system,sans-serif;overflow:hidden;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+header{padding:10px 12px 6px}
+.row{display:flex;align-items:center;gap:8px}
+h1{font-size:16px;margin:0;flex:1}
+.icon{background:#262a33;border:0;color:#eef1f6;border-radius:8px;padding:6px 10px;font-size:14px;white-space:nowrap}
+#undobtn{background:#3a4152;font-weight:600}
+#undobtn:disabled{opacity:.35}
+select{background:#262a33;color:#eef1f6;border:0;border-radius:8px;padding:6px;max-width:34vw;min-width:0;font-size:13px}
+h1{white-space:nowrap}
+.prog{height:6px;background:#262a33;border-radius:3px;margin:8px 0 6px;overflow:hidden;display:flex}
+.prog i{display:block;height:100%}
+.tally{display:flex;gap:10px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
+.tally b{color:#eef1f6}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+#stage{flex:1;position:relative;min-height:0;margin:0 10px;touch-action:none;overflow:hidden;border-radius:14px}
+#card{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--card);overflow:hidden;will-change:transform}
+#card img,#card video{max-width:100%;max-height:100%;object-fit:contain;pointer-events:none;user-select:none;-webkit-user-drag:none}
+#card video{pointer-events:auto}
+.stamp{position:absolute;top:18px;padding:6px 14px;border:4px solid;border-radius:10px;font-weight:800;font-size:22px;letter-spacing:1px;opacity:0;text-transform:uppercase;background:rgba(0,0,0,.35);pointer-events:none}
+#s-photos{left:16px;color:var(--photos);border-color:var(--photos);transform:rotate(-12deg)}
+#s-drive{left:50%;transform:translateX(-50%);color:var(--drive);border-color:var(--drive);white-space:nowrap}
+#s-delete{right:16px;color:var(--delete);border-color:var(--delete);transform:rotate(12deg)}
+#s-local{left:50%;top:auto;bottom:22px;transform:translateX(-50%);color:var(--local);border-color:var(--local)}
+.edge{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;color:var(--mut);writing-mode:vertical-rl;pointer-events:none;opacity:.7}
+#e-left{left:-2px;transform:translateY(-50%) rotate(180deg)}#e-right{right:-2px}
+#info{padding:7px 12px 4px;font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:22px}
+#info b{color:#eef1f6;font-weight:600}
+#bar{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:6px 8px 10px}
+.act{border:0;border-radius:12px;padding:10px 4px 8px;color:#fff;font-size:15px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
+.act small{font-weight:400;font-size:11px;opacity:.85;line-height:1.2}
+.act .k{font-size:10px;opacity:.6;font-weight:400}
+#bd{background:var(--delete)}#bl{background:var(--local)}#bp{background:var(--photos)}#bv{background:var(--drive)}
+#toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));pointer-events:none;text-align:center;max-width:94vw;transform:translateX(-50%);background:#2b303b;padding:9px 14px;border-radius:10px;font-size:13.5px;display:none;gap:12px;align-items:center;box-shadow:0 4px 18px #0008;z-index:5;white-space:nowrap}
+#toast button{background:none;border:0;color:#7fb3ff;font-weight:700;font-size:13.5px}
+#help{position:fixed;inset:0;background:#08090c;z-index:10;display:none;overflow:auto;padding:22px 18px}
+#help h2{margin:0 0 4px;font-size:20px}
+#help p{color:var(--mut);margin:4px 0 14px}
+.opt{display:flex;gap:12px;align-items:flex-start;background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px;border-left:5px solid}
+.opt .g{font-size:26px;width:34px;text-align:center}
+.opt h3{margin:0 0 3px;font-size:16px}
+.opt div p{margin:0;color:#c9d0db;font-size:13.5px}
+.opt kbd,.keys kbd{background:#333946;border-radius:4px;padding:1px 6px;font-size:12px;color:#eef1f6}
+.keys{color:var(--mut);font-size:13px;margin:12px 0 18px;line-height:1.9}
+#gotit{position:sticky;bottom:0;box-shadow:0 -10px 20px #08090c;width:100%;padding:14px;border:0;border-radius:12px;background:#eef1f6;color:#111;font-size:16px;font-weight:700}
+#done{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mut)}
+#done h2{color:#eef1f6}
+#done code{background:#262a33;padding:3px 7px;border-radius:6px;color:#eef1f6;font-size:12.5px}
+#tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}
+#tabs button{background:#262a33;border:0;color:#c9d0db;border-radius:9px;padding:6px 1px;font-size:11px;border-bottom:3px solid transparent}
+#tabs button.on{color:#fff;background:#323846}
+#tabs button b{display:block;font-size:14px}
+#grid{position:absolute;inset:0;overflow:auto;display:none;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));grid-auto-rows:max-content;gap:4px;align-content:start;touch-action:pan-y;padding-bottom:10px}
+#grid .t{position:relative;aspect-ratio:1;background:#1a1d24;border-radius:6px;overflow:hidden}
+#grid .t img{width:100%;height:100%;object-fit:cover}
+#grid .t span{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:2px 4px;background:#000a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#grid .t .v{position:absolute;top:4px;right:4px;font-size:14px}
+#rv{display:none;gap:8px;padding:0 10px 4px}
+#rv button{flex:1;background:#262a33;border:0;color:#eef1f6;border-radius:9px;padding:8px;font-size:13px}
+#banner{margin:0 10px 6px;padding:7px 10px;border-radius:9px;font-size:12.5px;display:none}
+#syncp{position:fixed;inset:0;background:#08090c;z-index:12;display:none;overflow:auto;padding:16px 16px 30px}
+#syncp h2{margin:0;font-size:19px;flex:1}
+.sec{background:var(--card);border-radius:12px;padding:13px;margin-top:12px}
+.sec h3{margin:0 0 6px;font-size:15.5px}
+.sec p,.sec li{color:#c9d0db;font-size:13.5px;margin:4px 0}
+.sec ol{padding-left:20px;margin:6px 0}
+.big{width:100%;border:0;border-radius:11px;padding:13px;font-size:15.5px;font-weight:700;color:#fff;margin-top:8px}
+.big:disabled{opacity:.35}
+.pill{display:inline-block;border-radius:20px;padding:2px 9px;font-size:12px;font-weight:600}
+.ok{background:#173d2b;color:#7be0a8}.no{background:#3d1d1d;color:#ffb4b4}.wait{background:#3a3218;color:#f0d27a}
+#qr{background:#fff;border-radius:10px;padding:6px;width:190px;height:190px;display:block;margin:8px auto}
+.mono{font-family:ui-monospace,monospace;font-size:11.5px;word-break:break-all;background:#22262f;padding:7px;border-radius:7px;color:#eef1f6}
+#hint{margin:6px 10px 0;background:#1f2a22;border:1px solid #2f5a3f;border-radius:11px;padding:9px 11px;font-size:13.5px;display:none}
+#hint .hb{display:flex;gap:7px;margin-top:7px}
+#hint button{flex:1;border:0;border-radius:9px;padding:10px 6px;font-size:14px;font-weight:700;color:#fff}
+#inforow{display:flex;align-items:center;gap:6px;padding:7px 10px 2px 12px}
+#inforow #info{flex:1;padding:0;min-width:0}
+#folderbtn{background:#262a33;border:0;color:#eef1f6;border-radius:8px;padding:6px 9px;font-size:12.5px;white-space:nowrap}
+#fsheet{position:fixed;inset:0;background:#08090c;z-index:12;display:none;overflow:auto;padding:16px 16px 30px}
+#fsheet .path{font-size:13px;color:var(--mut);word-break:break-word;margin:6px 0}
+#fthumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;grid-auto-rows:max-content;margin:10px 0}
+#fthumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:#1a1d24}
+#fsheet label{display:flex;gap:8px;align-items:center;font-size:13.5px;color:#c9d0db;margin:8px 0}
+#fsheet label input{width:20px;height:20px}
+</style></head>
+<body>
+<header>
+  <div class="row">
+    <h1>📸 Photos</h1>
+    <select id="folder" title="Only show one folder"></select>
+    <button class="icon" id="syncbtn" title="Send Google Photos picks to the phone" style="background:#1d4d36">📱 Send</button>
+    <button class="icon" id="undobtn" title="Undo last decision (Z)" disabled>↩ Undo</button>
+    <button class="icon" id="helpbtn" aria-label="Help">?</button>
+  </div>
+  <div class="prog" id="prog"></div>
+  <div class="tally" id="tally"></div>
+  <div id="tabs"></div>
+</header>
+<div id="banner"></div>
+
+<div id="stage">
+  <div id="card">
+    <div class="stamp" id="s-photos">🖼 Google Photos</div>
+    <div class="stamp" id="s-drive">📁 Google Drive</div>
+    <div class="stamp" id="s-delete">🗑 Delete</div>
+    <div class="stamp" id="s-local">💾 Local only</div>
+  </div>
+  <div id="done"></div>
+  <div id="grid"></div>
+</div>
+<div id="rv"><button id="back">← Back to grid</button><button id="unsort">↺ Send back to “To sort”</button></div>
+<div id="inforow"><div id="info"></div><button id="folderbtn" title="Send this whole folder somewhere">📂 Whole folder</button></div>
+<div id="hint"></div>
+
+<div id="bar">
+  <button class="act" id="bd">🗑 Delete<small>gone</small><span class="k">swipe ← · key ←</span></button>
+  <button class="act" id="bl">💾 Local<small>disk only</small><span class="k">swipe ↓ · key ↓</span></button>
+  <button class="act" id="bv">📁 Drive<small>keep in Drive</small><span class="k">swipe ↑ · key ↑</span></button>
+  <button class="act" id="bp">🖼 Photos<small>sync to Photos</small><span class="k">swipe → · key →</span></button>
+</div>
+
+
+<div id="syncp">
+  <div class="row"><h2>📱 Send to phone → Google Photos</h2><button class="icon" id="syncclose">✕ Close</button></div>
+  <p style="color:var(--mut);font-size:13px;margin:8px 0 0">Your <b>🖼 Google Photos</b> picks go to the your phone through Syncthing over Tailscale. Google Photos on the phone then backs them up. <b>Nothing reaches the phone until you press Send</b>, so a wrong swipe can still be undone safely.</p>
+
+  <div class="sec" id="sec-send">
+    <h3>1 · Send photos</h3>
+    <div id="sendinfo"><p>Loading…</p></div>
+    <button class="big" id="sendbtn" style="background:var(--photos)" disabled>📤 Send</button>
+  </div>
+
+  <div class="sec">
+    <h3>2 · Phone status</h3>
+    <div id="phoneinfo"><p>Loading…</p></div>
+  </div>
+
+  <div class="sec" id="sec-setup">
+    <h3>3 · One-time phone setup</h3>
+    <ol>
+      <li>On the your phone, install <b>Syncthing-Fork</b> (Play Store or F-Droid). Make sure the phone's Tailscale is on.</li>
+      <li>In the app: <b>Devices → ＋</b> and scan this code (this is your computer). Name it <b>your computer</b>, save.
+        <img id="qr" alt="your computer device QR"><div class="mono" id="myid"></div></li>
+      <li>Within a minute the phone appears below. Tap <b>Accept phone</b>.<div id="pending"></div></li>
+      <li>The phone then asks to add the folder <b>“Google Photos (from Drive)”</b>. Accept, set the folder path to <b>Pictures/FromDrive</b> and the folder type to <b>Receive only</b>, and save.</li>
+      <li>Open <b>Google Photos → Library → Photos on device</b>, open each <b>FromDrive</b> folder and turn on <b>Backup</b>. Google Photos backs up per folder.</li>
+    </ol>
+    <p style="color:var(--mut)">After Google Photos shows them as backed up, you can use its <b>Free up space</b> on the phone. Your copies here are unaffected.</p>
+  </div>
+
+  <div class="sec">
+    <h3>4 · Clean up Google Drive</h3>
+    <p>Moves files out of Google Drive into Drive's <b>Trash</b>, only when the copy on this disk matches Drive exactly (checked file by file). Your copies here stay.</p>
+    <div id="dinfo"><p style="color:var(--mut)">Checking…</p></div>
+    <label style="display:block;margin:8px 0"><input type="checkbox" id="dphotos"> Also remove the <b>🖼 Google Photos</b> ones. Tick only after Google Photos on the phone shows them as backed up.</label>
+    <button class="big" id="dplan" style="background:#333946">🔍 Check what would go</button>
+    <button class="big" id="dgo" style="background:var(--delete)" disabled>🧹 Move to Drive Trash</button>
+    <button class="big" id="dundo" style="background:#333946">↩ Restore last removal</button>
+    <button class="big" id="dempty" style="background:#5a2a2a">🔥 Empty Drive Trash (frees the space, permanent)</button>
+    <p style="color:var(--mut);font-size:12.5px">Drive Trash still counts toward your 15 GB until it's emptied (or 30 days pass). 💾 Local-only and 🗑 Delete files are always included; ☁️ Drive ones are never touched.</p>
+  </div>
+</div>
+
+<div id="fsheet">
+  <div class="row"><h2 style="margin:0;font-size:19px;flex:1">📂 Whole folder</h2><button class="icon" id="fclose">✕ Close</button></div>
+  <div class="path" id="fpath"></div>
+  <div id="fcount" style="font-size:14px"></div>
+  <div id="fthumbs"></div>
+  <label id="fsubl"><input type="checkbox" id="fsub"> <span id="fsubt">Include subfolders</span></label>
+  <label><input type="checkbox" id="fall"> Also change photos here you already sorted</label>
+  <div id="fbtns"></div>
+  <p style="color:var(--mut);font-size:12.5px">One tap moves the whole folder. <b>↩ Undo</b> reverses it in one step.</p>
+</div>
+<div id="toast"><span id="tmsg"></span><button id="undo" hidden></button></div>
+
+<div id="help">
+  <h2>How this works</h2>
+  <p>One photo at a time. Decide where it should live. Nothing is moved or deleted while you swipe; choices are saved and applied later, after you review the totals.</p>
+  <div class="opt" style="border-color:var(--photos)"><span class="g">🖼</span><div>
+    <h3>Swipe right → Google Photos</h3>
+    <p>Real photos and videos worth having on your phone. Goes into the <b>Google Photos sync</b> folder (one album per folder), and the expansion drive keeps a copy.</p></div></div>
+  <div class="opt" style="border-color:var(--drive)"><span class="g">📁</span><div>
+    <h3>Swipe up ↑ Google Drive</h3>
+    <p>Files you want in the cloud but <b>not</b> in your photo timeline: ID scans, certificates, documents, design files, diagrams. Stays in Google Drive, and the expansion drive keeps a copy.</p></div></div>
+  <div class="opt" style="border-color:var(--local)"><span class="g">💾</span><div>
+    <h3>Swipe down ↓ Local only</h3>
+    <p>Keep it, but not in Google at all. Lives only on the expansion drive, and its Drive copy gets removed to free space. Use for old archives, college projects, raw shots.</p></div></div>
+  <div class="opt" style="border-color:var(--delete)"><span class="g">🗑</span><div>
+    <h3>Swipe left ← Delete</h3>
+    <p>Not worth keeping anywhere: blurry, duplicates, random screenshots, memes. Goes to a holding folder first (recoverable), never straight to the bin.</p></div></div>
+  <div class="keys">
+    <b>Undo:</b> the <b>↩ Undo</b> button at the top (works again and again, even after closing the page), or <kbd>Z</kbd> / <kbd>Backspace</kbd><br>
+    <b>Keyboard:</b> <kbd>→</kbd> Google Photos · <kbd>↑</kbd> Google Drive · <kbd>↓</kbd> local only · <kbd>←</kbd> delete · <kbd>?</kbd> this help<br>
+    <b>Not sure?</b> Choose <b>Local only</b>; it's the safe middle and can be changed later.<br>
+    <b>Changed your mind?</b> Tap the <b>☁ / 💾 / 🗑 tabs</b> at the top to browse everything already marked. Tap a photo, then swipe it to its new place, or press “Send back to To sort”.<br>
+    <b>📂 Whole folder</b> (next to the file name): send every photo in that folder to one place in one tap. After 5 from the same folder go to the same place, a 💡 hint offers to do the rest.<br>
+    <b>Folder menu</b> (top): sort one folder at a time. Progress is saved; close the tab anytime.
+  </div>
+  <button id="gotit">Got it, start</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const L={photos:{t:'🖼 Google Photos',c:'var(--photos)'},drive:{t:'📁 Google Drive',c:'var(--drive)'},local:{t:'💾 Local only',c:'var(--local)'},delete:{t:'🗑 Delete',c:'var(--delete)'}};
+const KEYS=['photos','drive','local','delete'];
+let items=[],mode='todo',cur=null,undoN=0,busy=false;
+const card=$('card'),stage=$('stage');
+const mb=b=>b>=1e9?(b/1e9).toFixed(2)+' GB':(b/1e6).toFixed(1)+' MB';
+const enc=encodeURIComponent;
+const esc=t=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function load(){fetch('/list').then(r=>r.json()).then(j=>{items=j.items;setUndo(j.undo);folders();render()})}
+function setUndo(n){undoN=n;$('undobtn').disabled=!n;$('undobtn').title=n?`Undo last decision (${n} in history) · key Z`:'Nothing to undo'}
+function folders(){
+  const fs={};items.filter(inMode).forEach(x=>fs[x.folder]=(fs[x.folder]||0)+1);
+  const f=decodeURIComponent($('folder').value);
+  $('folder').innerHTML=`<option value="">All folders (${Object.values(fs).reduce((a,b)=>a+b,0)})</option>`+
+    Object.keys(fs).sort().map(k=>`<option value="${enc(k)}">${esc(k)} (${fs[k]})</option>`).join('');
+  $('folder').value=fs[f]?enc(f):'';
+}
+const inMode=x=>mode==='todo'?!x.label:x.label===mode;
+const visible=()=>{const f=decodeURIComponent($('folder').value);return items.filter(x=>inMode(x)&&(!f||x.folder===f))};
+$('folder').onchange=()=>{cur=null;render()};
+
+function tally(){
+  const n=k=>items.filter(x=>x.label===k).length,sz=k=>items.filter(x=>x.label===k).reduce((a,x)=>a+x.size,0);
+  const total=items.length,done=KEYS.reduce((a,k)=>a+n(k),0);
+  $('prog').innerHTML=KEYS.map(k=>`<i style="width:${total?n(k)/total*100:0}%;background:${L[k].c}"></i>`).join('');
+  $('tally').innerHTML=`<span><b>${done}</b> / ${total} sorted</span>`+KEYS.map(k=>`<span><span class="dot" style="background:${L[k].c}"></span>${mb(sz(k))} ${L[k].t.slice(2).toLowerCase()}</span>`).join('');
+  const tabs=[['todo','📥 To sort',total-done,'#888']].concat(KEYS.map(k=>[k,L[k].t,n(k),L[k].c]));
+  $('tabs').innerHTML=tabs.map(([k,t,c,col])=>`<button data-m="${k}" class="${mode===k?'on':''}" style="border-bottom-color:${mode===k?col:'transparent'}"><b>${c}</b>${t}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;cur=null;folders();render()});
+}
+function media(x,big=true){return x.kind==='video'
+  ?`<video src="/video?p=${enc(x.p)}" controls playsinline preload="metadata"></video>`
+  :`<img src="/img?p=${enc(x.p)}" alt="" onerror="this.outerHTML='<div class=err style=&quot;padding:20px;color:#9aa3b2;text-align:center&quot;>⚠ Can’t preview this file.<br>Decide by its name, or choose Local only.</div>'">`}
+
+function render(){
+  tally();
+  const v=visible(),review=mode!=='todo';
+  $('banner').style.display=review?'block':'none';
+  if(review){$('banner').style.background='#1d2230';$('banner').style.borderLeft='4px solid '+L[mode].c;
+    $('banner').innerHTML=cur?`Re-deciding a photo marked <b>${L[mode].t}</b>. Swipe it to a new place, or use the buttons below.`
+      :`Reviewing <b>${L[mode].t}</b> (${v.length}). Tap any photo to change its decision.`}
+  $('rv').style.display=review&&cur?'flex':'none';
+  $('bar').style.display=review&&!cur?'none':'grid';
+  $('folderbtn').style.display=review&&!cur?'none':'';
+  // grid view
+  if(review&&!cur){
+    card.style.display='none';$('done').style.display='none';$('info').textContent='';
+    $('grid').style.display='grid';
+    $('grid').innerHTML=v.length?v.map((x,k)=>`<div class="t" data-k="${k}">${x.kind==='video'?'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px">🎬</div>':`<img loading="lazy" src="/thumb?p=${enc(x.p)}">`}<span>${esc(x.name)}</span></div>`).join('')
+      :`<p style="grid-column:1/-1;color:#9aa3b2;text-align:center;margin-top:40px">Nothing marked ${L[mode].t} yet.</p>`;
+    $('grid').querySelectorAll('.t').forEach(t=>t.onclick=()=>{cur=v[+t.dataset.k];render()});
+    return}
+  $('grid').style.display='none';
+  const x=review?cur:v[0];
+  card.querySelectorAll('img,video,.err').forEach(e=>e.remove());
+  card.style.transition='none';card.style.transform='';setStamps(0,0);
+  if(!x){card.style.display='none';$('done').style.display='flex';$('info').textContent='';
+    const n=k=>items.filter(i=>i.label===k).length;
+    $('done').innerHTML=$('folder').value?`<h2>Folder done ✅</h2><p>Pick another folder from the menu.</p>`:
+      `<h2>All sorted 🎉</h2><p>${n('photos')} Google Photos · ${n('drive')} Google Drive · ${n('local')} local only · ${n('delete')} delete</p>
+       <p>Nothing has been moved yet. Double-check using the tabs above, then tell Claude <i>“apply the photo decisions”</i>; it shows totals before touching anything.</p>
+       <p>Files still downloading? <a href="#" onclick="load();return false" style="color:#7fb3ff">Reload list</a></p>`;return}
+  card.style.display='flex';$('done').style.display='none';
+  card.insertAdjacentHTML('afterbegin',media(x));
+  $('info').innerHTML=`<b>${esc(x.name)}</b> · ${esc(x.folder)} · ${mb(x.size)}${x.kind==='video'?' · 🎬 video':''} <span id="meta"></span>`;
+  fetch('/meta?p='+enc(x.p)).then(r=>r.json()).then(m=>{const s=[m.taken&&('taken '+m.taken),m.dims,m.camera].filter(Boolean).join(' · ');if($('meta'))$('meta').textContent=s?'· '+s:''});
+  if(!review)for(const n of v.slice(1,3))if(n.kind==='image')new Image().src='/img?p='+enc(n.p);
+}
+function setStamps(dx,dy){
+  const c=v=>Math.max(0,Math.min(1,v/110)),h=Math.abs(dx)>Math.abs(dy);
+  $('s-photos').style.opacity=h?c(dx):0;$('s-delete').style.opacity=h?c(-dx):0;$('s-local').style.opacity=h?0:c(dy);$('s-drive').style.opacity=h?0:c(-dy);
+}
+function post(x,label){return fetch('/set',{method:'POST',body:JSON.stringify({p:x.p,label:label||'clear'})}).then(r=>r.json()).then(j=>{if(j.undo!=null)setUndo(j.undo)})}
+function decide(label){
+  const review=mode!=='todo',x=review?cur:visible()[0];
+  if(busy||!x)return;
+  if(review&&label===x.label){toast('Already '+L[label].t+'. Unchanged.',false);return}
+  busy=true;x.label=label;post(x,label);
+  card.style.transition='transform .22s ease-in';
+  card.style.transform={photos:'translateX(130%) rotate(18deg)',delete:'translateX(-130%) rotate(-18deg)',local:'translateY(120%)',drive:'translateY(-120%)'}[label];
+  setStamps(label==='photos'?200:label==='delete'?-200:0,label==='local'?200:label==='drive'?-200:0);
+  toast(`${review?'Moved to ':''}${L[label].t}: ${x.name}`);
+  setTimeout(()=>{busy=false;cur=null;folders();render();maybeHint(x.folder,label)},220);
+}
+function unsort(){if(!cur)return;const x=cur;x.label=null;post(x,null);toast('Back in To sort: '+x.name);cur=null;folders();render()}
+async function undo(){
+  if(busy)return;busy=true;
+  const j=await fetch('/undo',{method:'POST'}).then(r=>r.json());busy=false;
+  if(!j.ok){setUndo(0);return toast('Nothing to undo',false)}
+  setUndo(j.left);
+  if(j.bulk){toast(`↩ Undid whole-folder move: ${j.bulk} photos from ${j.folder.split('/').pop()||'top level'} are back where they were`,false);return load()}
+  const x=items.find(i=>i.p===j.p);
+  const nm=l=>l?L[l].t:'📥 To sort';
+  if(x){x.label=j.prev;items.splice(items.indexOf(x),1);items.unshift(x)}   // show it again right away
+  if(x&&!j.prev){mode='todo';cur=null}else if(x){mode=j.prev;cur=x}
+  toast(`↩ Undid ${nm(j.label)} → back to ${nm(j.prev)}: ${j.p.split('/').pop()}`,false);
+  folders();render();
+}
+let tt;function toast(m,withUndo=true){$('tmsg').textContent=m;$('toast').style.display='flex';clearTimeout(tt);tt=setTimeout(()=>$('toast').style.display='none',3500)}
+$('undo').onclick=undo;$('undobtn').onclick=undo;$('bp').onclick=()=>decide('photos');$('bv').onclick=()=>decide('drive');$('bl').onclick=()=>decide('local');$('bd').onclick=()=>decide('delete');
+$('back').onclick=()=>{cur=null;render()};$('unsort').onclick=unsort;
+
+let sx=null,sy=0,dx=0,dy=0;
+stage.addEventListener('pointerdown',e=>{if($('grid').style.display==='grid')return;if(e.target.tagName==='VIDEO'&&e.offsetY>e.target.clientHeight-50)return;
+  sx=e.clientX;sy=e.clientY;dx=dy=0;card.style.transition='none';stage.setPointerCapture(e.pointerId)});
+stage.addEventListener('pointermove',e=>{if(sx===null)return;dx=e.clientX-sx;dy=e.clientY-sy;
+  card.style.transform=Math.abs(dx)>Math.abs(dy)?`translateX(${dx}px) rotate(${dx/18}deg)`:`translateY(${dy}px)`;setStamps(dx,dy)});
+stage.addEventListener('pointerup',()=>{if(sx===null)return;sx=null;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>90)decide(dx>0?'photos':'delete');
+  else if(dy>90)decide('local');else if(dy<-90)decide('drive');
+  else{card.style.transition='transform .2s';card.style.transform='';setStamps(0,0)}});
+stage.addEventListener('pointercancel',()=>{sx=null;card.style.transform='';setStamps(0,0)});
+
+onkeydown=e=>{if($('help').style.display==='block'){if(e.key==='Enter'||e.key==='Escape')closeHelp();return}
+  ({ArrowRight:()=>decide('photos'),ArrowUp:()=>decide('drive'),ArrowLeft:()=>decide('delete'),ArrowDown:()=>decide('local'),z:undo,Backspace:undo,'?':openHelp,Escape:()=>{cur=null;render()}})[e.key]?.()};
+function openHelp(){$('help').style.display='block'}
+function closeHelp(){$('help').style.display='none';localStorage.seenHelp4=1}
+$('helpbtn').onclick=openHelp;$('gotit').onclick=closeHelp;
+if(!localStorage.seenHelp4)openHelp();
+
+// ---- phone sync panel ----
+let syncTimer=null;
+async function syncRefresh(){
+  let j;try{j=await fetch('/sync/status').then(r=>r.json())}catch(e){j={error:String(e)}}
+  if(j.error){$('sendinfo').innerHTML=`<p>⚠ Syncthing isn't answering: ${esc(j.error)}</p>`;return}
+  $('myid').textContent=j.myID;
+  const pa=j.pending_add,pr=j.pending_remove;
+  $('sendinfo').innerHTML=(pa||pr)?`<p><b>${pa}</b> new photo${pa==1?'':'s'} to send${pr?` · <b>${pr}</b> to take back off the phone (you changed your mind)`:''}.</p><p style="color:var(--mut)">Already in the phone folder: ${j.in_sync_folder}</p>`
+    :`<p>✅ Everything marked 🖼 Google Photos is already in the phone folder (${j.in_sync_folder} files).</p>`;
+  $('sendbtn').disabled=!(pa||pr);
+  $('sendbtn').textContent=pr&&!pa?`📤 Update phone folder (remove ${pr})`:`📤 Send ${pa} photo${pa==1?'':'s'} to phone`+(pr?` (and remove ${pr})`:'');
+  const ph=j.phone;
+  if(!ph){$('phoneinfo').innerHTML=`<p><span class="pill no">Not set up</span> Do the one-time setup (section 3).</p>`;$('sec-setup').style.display=''}
+  else{
+    $('sec-setup').style.display='none';
+    const pct=ph.completion,needMB=(ph.need_bytes/1e6).toFixed(1);
+    $('phoneinfo').innerHTML=`<p>${ph.connected?'<span class="pill ok">Connected</span>':'<span class="pill no">Offline</span>'} your phone ${ph.connected?'· '+esc(ph.address):'· open Syncthing on the phone and check Tailscale'}</p>
+      ${ph.remote_state==='notSharing'||ph.remote_state==='unknown'||!ph.remote_state
+        ?`<p><span class="pill no">Folder not accepted on phone</span></p><p>On the phone, open <b>Syncthing-Fork</b>. Look for a notification or a banner saying <b>“your computer wants to share Google Photos (from Drive)”</b>, then tap it and choose <b>Add</b>. Set the folder path to <b>Pictures/FromDrive</b> and the type to <b>Receive only</b>, then save. If you don't see it, close the app fully and reopen it.</p>`
+        :ph.need_files>0?`<p><span class="pill wait">${pct}% copied</span> ${ph.need_files} files · ${needMB} MB still to go. Keep Syncthing open on the phone.</p>`
+        :`<p><span class="pill ok">Up to date</span> the phone has everything sent so far.</p>`}
+      <p><a href="#" id="showsetup" style="color:#7fb3ff">Show setup steps again</a></p>`;
+    $('showsetup').onclick=e=>{e.preventDefault();$('sec-setup').style.display=''};
+  }
+  $('pending').innerHTML=j.pending_devices.map(d=>`<div class="row" style="margin-top:6px"><span class="mono" style="flex:1">📱 ${esc(d.name||'Unnamed device')}<br>${esc(d.id.slice(0,23))}…</span><button class="icon" data-id="${esc(d.id)}" style="background:var(--photos)">Accept phone</button></div>`).join('')
+    ||(ph?'':'<p style="color:var(--mut)">Waiting for the phone to appear…</p>');
+  $('pending').querySelectorAll('button').forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent='Adding…';
+    const r=await fetch('/sync/accept',{method:'POST',body:JSON.stringify({id:b.dataset.id})}).then(r=>r.json());
+    toast(r.ok===false?'⚠ '+r.error:'✅ Phone added. Now accept the folder on the phone (step 4).',false);syncRefresh()});
+}
+$('syncbtn').onclick=()=>{$('syncp').style.display='block';dPoll();$('qr').src='/sync/qr.svg';syncRefresh();clearInterval(syncTimer);syncTimer=setInterval(syncRefresh,5000)};
+$('syncclose').onclick=()=>{$('syncp').style.display='none';clearInterval(syncTimer)};
+$('sendbtn').onclick=async()=>{const b=$('sendbtn');b.disabled=true;b.textContent='Preparing… (copying files, up to a minute)';
+  const r=await fetch('/sync/apply',{method:'POST'}).then(r=>r.json());
+  toast(r.error?'⚠ '+r.error:`📤 ${r.added} added${r.removed?`, ${r.removed} removed`:''}${r.failed?` · ⚠ ${r.failed} failed: ${r.errors[0]}`:''}. Syncthing is copying them to the phone.`,false);syncRefresh()};
+
+
+// ---- Drive cleanup ----
+const dlabels=()=>['delete','local'].concat($('dphotos').checked?['photos']:[]);
+const LN={delete:'🗑 Delete',local:'💾 Local only',photos:'🖼 Google Photos'};
+let dTimer=null,lastPlan=null;
+async function dPoll(){
+  const j=await fetch('/drive/job').then(r=>r.json());
+  if(!j.has_token){$('dinfo').innerHTML='<p>⚠ No Google sign-in with delete permission yet.</p>';['dplan','dgo','dundo','dempty'].forEach(i=>$(i).disabled=true);return}
+  const busy=j.state==='running';['dplan','dundo','dempty'].forEach(i=>$(i).disabled=busy);
+  if(busy){$('dinfo').innerHTML=`<p><span class="pill wait">Working…</span> ${({plan:'checking every file against Drive (about a minute)',apply:'moving files to Drive Trash',undo:'restoring files',empty:'emptying Drive Trash'})[j.kind]}</p>`;$('dgo').disabled=true;return}
+  clearInterval(dTimer);dTimer=null;
+  if(j.state==='error'){$('dinfo').innerHTML=`<p>⚠ ${esc(j.error||'failed')}</p>`;return}
+  const r=j.result||{};
+  if(j.kind==='plan'&&j.state==='done'){lastPlan=r;
+    const rows=Object.entries(r.by).map(([k,v])=>`<tr><td>${LN[k]}</td><td>${v.n}</td><td>${(v.bytes/1e6).toFixed(0)} MB</td></tr>`).join('');
+    const tot=Object.values(r.by).reduce((a,v)=>a+v.n,0);
+    $('dinfo').innerHTML=rows?`<table style="width:100%"><tr><th align=left>Bucket</th><th>Files</th><th>Size</th></tr>${rows}</table>${r.skipped?`<p>${r.skipped} skipped (no matching copy here), kept on Drive.</p>`:''}`:'<p>✅ Nothing left to remove.</p>';
+    $('dgo').disabled=!tot;$('dgo').textContent=`🧹 Move ${tot} files to Drive Trash`}
+  else if(j.kind==='apply')$('dinfo').innerHTML=`<p>✅ ${r.trashed} files (${(r.bytes/1e6).toFixed(0)} MB) moved to Drive Trash.${r.failed&&r.failed.length?` ⚠ ${r.failed.length} failed.`:''} Restore with ↩ if needed, or empty the trash to free the space.</p>`;
+  else if(j.kind==='undo')$('dinfo').innerHTML=`<p>↩ ${r.restored} files restored to Drive.</p>`;
+  else if(j.kind==='empty')$('dinfo').innerHTML='<p>🔥 Drive Trash emptied. The space frees up within a few minutes.</p>';
+  else $('dinfo').innerHTML='<p>Press <b>Check</b> first.</p>';
+}
+async function dStart(kind,body={}){const r=await fetch('/drive/'+kind,{method:'POST',body:JSON.stringify(Object.assign({labels:dlabels()},body))}).then(r=>r.json());
+  if(r.ok===false)toast('⚠ '+(r.error||'not allowed'),false);clearInterval(dTimer);dTimer=setInterval(dPoll,2000);dPoll()}
+$('dplan').onclick=()=>dStart('plan');
+$('dphotos').onchange=()=>{$('dgo').disabled=true;$('dinfo').innerHTML='<p>Press <b>Check</b> again.</p>'};
+$('dgo').onclick=()=>{const n=Object.values(lastPlan?.by||{}).reduce((a,v)=>a+v.n,0);if(confirm(`Move ${n} files to Google Drive Trash? You can restore them for 30 days.`))dStart('apply',{confirm:'yes'})};
+$('dundo').onclick=()=>{if(confirm('Restore the files from the last removal back into Drive?'))dStart('undo')};
+$('dempty').onclick=()=>{if(confirm('Permanently empty Google Drive Trash? This includes anything else in Drive Trash and cannot be undone.'))dStart('empty',{confirm:'yes'})};
+
+// ---- whole-folder moves ----
+const fname=f=>f==='(top level)'?'top level':f.split('/').slice(-2).join(' › ');
+const dismissed=new Set(JSON.parse(localStorage.hintOff||'[]'));
+function maybeHint(folder,label){
+  const inF=items.filter(i=>i.folder===folder),same=inF.filter(i=>i.label===label).length,left=inF.filter(i=>!i.label).length;
+  const key=folder+'|'+label;
+  if(same<5||left<1||dismissed.has(key)||mode!=='todo'){$('hint').style.display='none';return}
+  $('hint').innerHTML=`💡 <b>${same}</b> from <b>${esc(fname(folder))}</b> went to <b>${L[label].t}</b>. <b>${left}</b> more in this folder aren't sorted yet.
+    <div class="hb"><button id="hyes" style="background:${L[label].c}">Send all ${left} there</button><button id="hno" style="background:#333946;flex:.55">Not now</button></div>`;
+  $('hint').style.display='block';$('toast').style.display='none';
+  $('hyes').onclick=()=>{$('hint').style.display='none';bulk(folder,label,false,false)};
+  $('hno').onclick=()=>{dismissed.add(key);localStorage.hintOff=JSON.stringify([...dismissed]);$('hint').style.display='none'};
+}
+async function bulk(folder,label,sub,all){
+  const r=await fetch('/bulk',{method:'POST',body:JSON.stringify({folder,label,subfolders:sub,all})}).then(r=>r.json());
+  if(r.undo!=null)setUndo(r.undo);
+  toast(r.n?`📂 ${r.n} photos from ${fname(folder)} → ${L[label].t}. Undo reverses it.`:'Nothing to change in that folder.',false);
+  $('fsheet').style.display='none';$('hint').style.display='none';load();
+}
+function curFolder(){const x=mode==='todo'?visible()[0]:cur;return x?x.folder:decodeURIComponent($('folder').value)||null}
+function openFolder(){
+  const f=curFolder();if(!f)return toast('Open a photo first',false);
+  const draw=()=>{
+    const sub=$('fsub').checked,all=$('fall').checked;
+    const inF=items.filter(i=>i.folder===f||(sub&&i.folder.startsWith(f+'/')));
+    const subN=items.filter(i=>i.folder.startsWith(f+'/')).length;
+    $('fsubl').style.display=subN?'flex':'none';$('fsubt').textContent=`Include subfolders (${subN} more photos)`;
+    const todo=inF.filter(i=>!i.label);
+    const by=k=>inF.filter(i=>i.label===k).length;
+    $('fpath').textContent=f;
+    $('fcount').innerHTML=`<b>${todo.length}</b> not sorted · `+KEYS.map(k=>`${L[k].t.split(' ')[0]} ${by(k)}`).join(' · ');
+    $('fthumbs').innerHTML=(all?inF:todo).slice(0,12).map(i=>i.kind==='video'?'<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#1a1d24;border-radius:6px">🎬</div>':`<img loading="lazy" src="/thumb?p=${enc(i.p)}">`).join('')+((all?inF:todo).length>12?`<div style="display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px">+${(all?inF:todo).length-12}</div>`:'');
+    $('fbtns').innerHTML=KEYS.map(k=>{const n=inF.filter(i=>(all||!i.label)&&i.label!==k).length;
+      return `<button class="big" data-k="${k}" style="background:${L[k].c}" ${n?'':'disabled'}>${L[k].t}: send ${n}</button>`}).join('');
+    $('fbtns').querySelectorAll('button').forEach(b=>b.onclick=()=>bulk(f,b.dataset.k,sub,all));
+  };
+  $('fsub').checked=false;$('fall').checked=false;$('fsub').onchange=draw;$('fall').onchange=draw;draw();$('fsheet').style.display='block';
+}
+$('folderbtn').onclick=openFolder;$('fclose').onclick=()=>$('fsheet').style.display='none';
+load();
+</script>
+
+</body></html>

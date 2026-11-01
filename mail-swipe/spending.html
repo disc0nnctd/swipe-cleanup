@@ -1,0 +1,101 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spending</title><link rel="icon" href="data:,">
+<style>
+body{margin:0;background:#0f1115;color:#eef1f6;font:14px/1.4 system-ui,sans-serif;padding:12px}
+h1{font-size:18px;margin:0 0 4px}.mut{color:#9aa3b2;font-size:12.5px}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+select,input,button{background:#262a33;color:#eef1f6;border:0;border-radius:8px;padding:7px 9px;font-size:13px}
+.card{background:#1a1d24;border-radius:12px;padding:12px;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:5px 4px;border-top:1px solid #262a33;text-align:left}
+td.n,th.n{text-align:right;white-space:nowrap}
+.bar{height:8px;background:#22a06b;border-radius:4px}
+a{color:#7fb3ff}
+tr.tx{cursor:pointer}tr.tx:active{background:#262a33}
+#dlg{position:fixed;inset:0;background:#000b;display:none;align-items:flex-end;justify-content:center;z-index:9}
+#dlg .box{background:#1d2028;border-radius:16px 16px 0 0;padding:16px;width:min(560px,100vw);max-height:90vh;overflow:auto}
+#dlg label{display:block;font-size:12.5px;color:#9aa3b2;margin:10px 0 4px}
+#dlg input,#dlg select{width:100%;box-sizing:border-box;font-size:15px;padding:10px}
+#dlg .btns{display:flex;gap:8px;margin-top:14px}#dlg .btns button{flex:1;padding:12px;font-size:15px;font-weight:700}
+.chip{display:inline-block;background:#262a33;border-radius:16px;padding:3px 9px;font-size:12px;margin:2px}
+.del{background:#3a2a2a;color:#ffc9c9}
+</style></head><body>
+<h1>💰 Spending (from your email)</h1>
+<div class="mut">Built locally from bank alerts and shop receipts. Kept even after the emails are deleted. <a href="/">← Mail Swipe</a></div>
+<div class="row">
+  <select id="src"><option value="bank">Bank &amp; card alerts (no double counting)</option><option value="merchant">Shop receipts</option><option value="all">Both</option></select>
+  <select id="yr"></select>
+  <select id="cat"><option value="">All categories</option></select>
+  <input id="max" type="number" placeholder="Hide single amounts above ₹" style="width:190px">
+  <input id="q" placeholder="Search merchant / text" style="flex:1;min-width:140px">
+  <button id="csv">⬇ CSV</button>
+</div>
+<div class="card"><b>By month</b><table id="months"></table></div>
+<div class="card"><b>By category</b> <span class="mut">(tap a transaction below to change how it's counted)</span><table id="cats"></table></div>
+<div class="card"><b>Top merchants / payees</b><table id="merch"></table></div>
+<div class="card"><b>By card / account</b><table id="inst"></table></div>
+<div class="card"><b>Transactions</b> <span class="mut" id="cnt"></span><table id="tx"></table></div>
+<div class="card"><b>📏 Your rules</b> <span class="mut">applied in order, after the built-in categories and the local AI</span><div id="rules"></div></div>
+<div id="dlg"><div class="box">
+  <b id="dt"></b><div class="mut" id="dsub"></div>
+  <label>When the merchant / email text contains</label><input id="dmatch">
+  <label>Then</label>
+  <select id="dact">
+    <option value="cat">put it in category…</option>
+    <option value="transfer">❌ don't count it as spending (transfer / own money)</option>
+    <option value="invest">📈 count it as investing, not spending</option>
+    <option value="rename">rename the merchant to…</option>
+  </select>
+  <div id="dcatw"><label>Category</label><select id="dcat"></select><input id="dnewcat" placeholder="…or type a new category" style="margin-top:6px"></div>
+  <div id="drenw" style="display:none"><label>New name</label><input id="dren"></div>
+  <div class="mut" id="dprev" style="margin-top:8px"></div>
+  <div class="btns"><button id="dno">Cancel</button><button id="dyes" style="background:#22a06b">Save rule</button></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id),inr=v=>'₹'+Math.round(v).toLocaleString('en-IN'),esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let L=[];
+fetch('/ledger').then(r=>r.json()).then(d=>{L=d;const ys=[...new Set(L.map(x=>new Date(x.date*1000).getFullYear()))].sort().reverse();
+  $('yr').innerHTML='<option value="">All years</option>'+ys.map(y=>`<option>${y}</option>`).join('');$('yr').value=ys[0]||'';reload()});
+['src','yr','max','q','cat'].forEach(i=>$(i).oninput=draw);
+const CATS=['Food delivery','Restaurants & cafes','Groceries','Transport','Travel','Subscriptions','Bills & recharge','Insurance','Shopping','Entertainment','Health','Education','People (UPI)','Fees & charges','Rent','Other'];
+function reload(){return fetch('/ledger').then(r=>r.json()).then(d=>{L=d;const cs=[...new Set(CATS.concat(L.map(x=>x.category).filter(Boolean)))];
+  const cur=$('cat').value;$('cat').innerHTML='<option value="">All categories</option>'+cs.map(c=>`<option>${esc(c)}</option>`).join('');$('cat').value=cur;draw();loadRules()})}
+async function loadRules(){const r=await fetch('/ledger/rules').then(r=>r.json());
+  $('rules').innerHTML=r.length?r.map(u=>`<div style="display:flex;gap:8px;align-items:center;border-top:1px solid #262a33;padding:6px 0"><div style="flex:1">contains “<b>${esc(u.match)}</b>” → ${u.set_direction==='transfer'?'❌ not spending':u.set_direction==='invest'?'📈 investing':''}${u.set_category?'<span class="chip">'+esc(u.set_category)+'</span>':''}${u.rename?' rename to <b>'+esc(u.rename)+'</b>':''}</div><button class="del" data-id="${u.id}">Delete</button></div>`).join('')
+    :'<p class="mut">No rules yet. Tap any transaction to make one.</p>';
+  $('rules').querySelectorAll('.del').forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent='…';await post('/ledger/rule_del',{id:b.dataset.id});reload()})}
+function post(u,d){return fetch(u,{method:'POST',body:JSON.stringify(d)}).then(r=>r.json())}
+let cur=null;
+function openRule(x){cur=x;$('dt').textContent=`${x.merchant||x.subject.slice(0,50)} · ${inr(x.amount)}`;$('dsub').textContent=`${new Date(x.date*1000).toLocaleDateString('en-IN')} · now: ${x.category||'Other'}`;
+  $('dmatch').value=(x.merchant||'').replace(/^(RAZ\*|IND\*|UPI_|PAYU\*|RAZORPAY\*)/i,'').trim()||x.sender.split('@')[1]||'';
+  $('dcat').innerHTML=CATS.map(c=>`<option>${esc(c)}</option>`).join('');$('dcat').value=x.category||'Other';$('dnewcat').value='';$('dren').value=x.merchant||'';
+  $('dact').value='cat';showAct();preview();$('dlg').style.display='flex'}
+function showAct(){$('dcatw').style.display=$('dact').value==='cat'?'':'none';$('drenw').style.display=$('dact').value==='rename'?'':'none'}
+function preview(){const q=$('dmatch').value.toLowerCase().trim();if(!q){$('dprev').textContent='';return}
+  const hit=L.filter(x=>(x.merchant+' '+x.subject+' '+x.sender).toLowerCase().includes(q));
+  $('dprev').textContent=`Matches ${hit.length} transactions · ${inr(hit.filter(x=>x.direction==='debit').reduce((a,x)=>a+x.amount,0))} of spending`}
+$('dact').onchange=showAct;$('dmatch').oninput=preview;$('dno').onclick=()=>$('dlg').style.display='none';
+$('dyes').onclick=async()=>{const a=$('dact').value,b=$('dyes');b.disabled=true;b.textContent='Saving…';
+  const body={match:$('dmatch').value,field:'any'};
+  if(a==='cat')body.set_category=$('dnewcat').value.trim()||$('dcat').value;
+  if(a==='transfer'||a==='invest')body.set_direction=a;
+  if(a==='rename')body.rename=$('dren').value.trim();
+  const r=await post('/ledger/rule_add',body);b.disabled=false;b.textContent='Save rule';$('dlg').style.display='none';
+  if(r.ok)await reload()};
+function rows(){const src=$('src').value,yr=$('yr').value,mx=+$('max').value||0,q=$('q').value.toLowerCase(),ct=$('cat').value;
+  return L.filter(x=>x.direction==='debit'&&(!ct||x.category===ct)&&(src==='all'||x.source===src)&&(!yr||new Date(x.date*1000).getFullYear()==yr)&&(!mx||x.amount<=mx)
+    &&(!q||(x.merchant+' '+x.subject+' '+x.sender).toLowerCase().includes(q)))}
+function group(r,key){const g={};r.forEach(x=>{const k=key(x)||'(unknown)';g[k]=g[k]||{n:0,s:0};g[k].n++;g[k].s+=x.amount});return Object.entries(g)}
+function table(id,entries,sortByKey){const max=Math.max(1,...entries.map(e=>e[1].s));
+  entries.sort(sortByKey?(a,b)=>a[0]<b[0]?1:-1:(a,b)=>b[1].s-a[1].s);
+  $(id).innerHTML=entries.slice(0,40).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${inr(v.s)}</td><td style="width:30%"><div class="bar" style="width:${v.s/max*100}%"></div></td></tr>`).join('')}
+function draw(){const r=rows();
+  table('months',group(r,x=>new Date(x.date*1000).toISOString().slice(0,7)),true);
+  table('cats',group(r,x=>x.category||'Other'));
+  table('merch',group(r,x=>(x.merchant||'').toUpperCase().replace(/^(RAZ\*|IND\*|UPI_)/,'').trim()));
+  table('inst',group(r,x=>x.instrument?'…'+x.instrument:''));
+  $('cnt').textContent=`${r.length} debits · ${inr(r.reduce((a,x)=>a+x.amount,0))}`;
+  $('tx').innerHTML=r.slice(0,300).map((x,i)=>`<tr class="tx" data-i="${i}"><td>${new Date(x.date*1000).toLocaleDateString('en-IN')}</td><td>${esc(x.merchant||x.subject.slice(0,40))}</td><td class="n">${inr(x.amount)}</td><td class="mut">${esc(x.category||'')}${x.currency==='USD'?' · $':''}</td></tr>`).join('');
+  $('tx').querySelectorAll('tr.tx').forEach(t=>t.onclick=()=>openRule(r[+t.dataset.i]))}
+$('csv').onclick=()=>{const r=rows(),h='date,amount,merchant,card_or_account,source,sender\n'+r.map(x=>[new Date(x.date*1000).toISOString().slice(0,10),x.amount,'"'+(x.merchant||'').replace(/"/g,"'")+'"',x.instrument,x.source,x.sender].join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/csv'}));a.download='spending.csv';a.click()};
+</script></body></html>

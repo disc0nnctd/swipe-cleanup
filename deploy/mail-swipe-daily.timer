@@ -1,0 +1,7 @@
+[Unit]
+Description=Run Mail Swipe daily cleanup
+[Timer]
+OnCalendar=*-*-* 04:30
+Persistent=true
+[Install]
+WantedBy=timers.target

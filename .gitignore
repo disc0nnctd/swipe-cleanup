@@ -1,0 +1,18 @@
+# personal data / state: never commit
+**/decisions*.json
+**/history.json
+**/thumbs/
+**/index.db*
+**/*.log
+**/*.tmp
+**/*.part
+**/__pycache__/
+*.env
+!config.example.env
+**/*.csv
+
+*token*.json
+*credentials*.json
+*.pem
+*.key
+.venv/

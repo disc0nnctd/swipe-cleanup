@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Mail Swipe</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--keep:#22a06b;--old:#d4882a;--trash:#d64545;--bg:#0f1115;--card:#1a1d24;--mut:#9aa3b2;--chip:#262a33}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:#eef1f6;font:15px/1.35 system-ui,-apple-system,sans-serif;overflow:hidden;overscroll-behavior:none}
+body{display:flex;flex-direction:column;height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+header{padding:10px 12px 4px}
+.row{display:flex;align-items:center;gap:6px}
+h1{font-size:15px;margin:0;flex:1;white-space:nowrap;overflow:hidden}
+select{min-width:0;flex:1;max-width:none}
+select,.icon{background:var(--chip);color:#eef1f6;border:0;border-radius:8px;padding:6px 8px;font-size:13px}
+.sum{font-size:12.5px;color:var(--mut);margin-top:7px;display:flex;gap:12px;flex-wrap:wrap}
+.sum b{color:#eef1f6}
+#idx{margin:6px 0 0;font-size:12px;color:#e6c27a;background:#2a2416;border-radius:8px;padding:5px 9px;display:none}
+#tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+#tabs button{background:var(--chip);border:0;color:#c9d0db;border-radius:9px;padding:7px 2px;font-size:12.5px;border-bottom:3px solid transparent}
+#tabs button.on{color:#fff;background:#323846;border-bottom-color:#7fb3ff}
+#tabs button b{display:block;font-size:14px}
+#stage{flex:1;position:relative;min-height:0;margin:8px 10px 0;touch-action:none}
+#card{position:absolute;inset:0;border-radius:14px;background:var(--card);overflow:auto;padding:14px;will-change:transform;touch-action:pan-y}
+.who{font-size:19px;font-weight:700;word-break:break-word}
+.addr{color:var(--mut);font-size:13px;word-break:break-all;margin-top:2px}
+.warn{margin-top:10px;background:#3a1c1c;border:1px solid #7a2e2e;color:#ffb4b4;border-radius:9px;padding:8px 10px;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.st{background:#22262f;border-radius:10px;padding:8px 10px}
+.st b{display:block;font-size:17px}
+.st span{font-size:11.5px;color:var(--mut)}
+.chips{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--chip);border-radius:20px;padding:3px 9px;font-size:12px;color:#c9d0db}
+.subj{margin:12px 0 0;padding:0;list-style:none;font-size:13px}
+.subj li{padding:6px 0;border-top:1px solid #262a33;color:#d4d9e2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subj h4{margin:0 0 2px;font-size:12px;color:var(--mut);font-weight:500}
+.links{display:flex;gap:8px;margin-top:12px}
+.links a{flex:1;text-align:center;background:var(--chip);color:#7fb3ff;text-decoration:none;border-radius:9px;padding:9px;font-size:13px}
+.stamp{position:absolute;top:16px;padding:5px 12px;border:4px solid;border-radius:10px;font-weight:800;font-size:20px;opacity:0;text-transform:uppercase;background:rgba(0,0,0,.45);pointer-events:none;z-index:2}
+#s-keep{left:14px;color:var(--keep);border-color:var(--keep);transform:rotate(-12deg)}
+#s-trash{right:14px;color:var(--trash);border-color:var(--trash);transform:rotate(12deg)}
+#s-old{left:50%;top:auto;bottom:20px;transform:translateX(-50%);color:var(--old);border-color:var(--old);white-space:nowrap}
+#bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:8px 10px 4px}
+.act{border:0;border-radius:12px;padding:9px 3px 7px;color:#fff;font-size:14px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:1px}
+.act small{font-weight:400;font-size:11px;opacity:.9}
+.act .k{font-size:10px;opacity:.6;font-weight:400}
+.act:disabled{opacity:.35}
+#bt{background:var(--trash)}#bo{background:var(--old)}#bk{background:var(--keep)}
+#skiprow{display:flex;justify-content:center;padding:0 10px 8px}
+#skip{background:none;border:0;color:var(--mut);font-size:13px;padding:6px 14px}
+#list{position:absolute;inset:0;overflow:auto;display:none;touch-action:pan-y}
+.li{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:10px;padding:10px;margin-bottom:6px}
+.li div{flex:1;min-width:0}
+.li b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.li span{font-size:12px;color:var(--mut)}
+.li button{background:var(--chip);border:0;color:#7fb3ff;border-radius:8px;padding:8px 10px;font-size:13px;white-space:nowrap}
+#toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));pointer-events:none;text-align:center;transform:translateX(-50%);max-width:94vw;background:#2b303b;padding:9px 14px;border-radius:10px;font-size:13.5px;display:none;gap:12px;align-items:center;box-shadow:0 4px 18px #0008;z-index:20}
+#toast button{background:none;border:0;color:#7fb3ff;font-weight:700;font-size:13.5px}
+#busy{position:fixed;inset:0;background:#000a;z-index:15;display:none;align-items:center;justify-content:center;font-size:15px}
+#busy div{background:#22262f;padding:16px 20px;border-radius:12px}
+.modal{position:fixed;inset:0;background:#08090ccc;z-index:18;display:none;align-items:center;justify-content:center;padding:20px}
+.modal .box{background:#1d2028;border-radius:14px;padding:18px;max-width:420px}
+.modal h3{margin:0 0 8px}
+.modal p{color:#c9d0db;font-size:14px}
+.modal .btns{display:flex;gap:8px;margin-top:14px}
+.modal .btns button{flex:1;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:700}
+#help{position:fixed;inset:0;background:#08090c;z-index:30;display:none;overflow:auto;padding:22px 18px 0}
+#help h2{margin:0 0 4px;font-size:20px}
+#help>p{color:var(--mut);margin:4px 0 14px}
+.opt{display:flex;gap:12px;align-items:flex-start;background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px;border-left:5px solid}
+.opt .g{font-size:24px;width:32px;text-align:center}
+.opt h3{margin:0 0 3px;font-size:16px}
+.opt div p{margin:0;color:#c9d0db;font-size:13.5px}
+.keys{color:var(--mut);font-size:13px;margin:12px 0 18px;line-height:1.85}
+.keys b{color:#eef1f6}
+#undobtn{background:#3a4152;font-weight:600;white-space:nowrap}#undobtn:disabled{opacity:.35}
+kbd{background:#333946;border-radius:4px;padding:1px 6px;font-size:12px;color:#eef1f6}
+#gotit{position:sticky;bottom:0;width:100%;padding:14px;border:0;border-radius:12px;background:#eef1f6;color:#111;font-size:16px;font-weight:700;margin-bottom:14px;box-shadow:0 -12px 20px #08090c}
+#empty{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--mut);padding:20px}
+#empty h2{color:#eef1f6}
+#aibox{margin-top:10px;border-radius:10px;padding:9px 11px;font-size:13.5px;border:1px solid #2f3a52;background:#1b2233}
+#aibox b.a{font-size:14.5px}
+#aibox .why{color:#c9d0db;margin-top:3px}
+#aibox .meta{color:var(--mut);font-size:12px;margin-top:3px}
+.act.sugg{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 16px #ffffff55}
+.act .ai{font-size:10.5px;font-weight:700;background:#0005;border-radius:6px;padding:0 5px;margin-top:2px;display:none}
+.act.sugg .ai{display:inline-block}
+#skiprow{gap:8px;align-items:center}
+#doai,#bulkai{border:0;border-radius:9px;padding:7px 11px;font-size:13px;font-weight:600;color:#fff;background:#3b4a78}
+#bulkai{background:#5a3b78}
+#job{position:fixed;inset:0;background:#000b;z-index:16;display:none;align-items:center;justify-content:center}
+#job .box{background:#22262f;border-radius:14px;padding:18px 20px;width:min(360px,90vw)}
+#job .bar{height:8px;background:#333946;border-radius:4px;overflow:hidden;margin:10px 0}
+#job .bar i{display:block;height:100%;background:#7fb3ff;width:0}
+#qchip{display:none;background:#2a2416;color:#f0d27a;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600}
+#qchip.ok{background:#173d2b;color:#7be0a8}#qchip.bad{background:#3d1d1d;color:#ffb4b4}
+.links button{flex:1;border:0;background:var(--chip);color:#7fb3ff;border-radius:9px;padding:9px;font-size:13px}
+.links button:disabled{color:var(--mut)}
+.unsubok{color:#7be0a8!important}
+#cmsg label{display:flex;gap:8px;align-items:center;margin-top:10px;color:#eef1f6}
+#cmsg input{width:20px;height:20px}
+#typebox{margin-top:10px;border-radius:10px;padding:9px 11px;font-size:13.5px;border:1px solid #5a4a1c;background:#241f12}
+#typebox .t{display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid #3a3220}
+#typebox .t:first-of-type{border-top:0}
+#typebox .r{color:var(--mut);font-size:12px}
+#marked{margin-top:10px;border-radius:10px;padding:8px 11px;font-size:13px;background:#2a1a1a;border:1px solid #6b2c2c;color:#ffc9c9}
+#marked div+div{margin-top:3px}
+#autop{position:fixed;inset:0;background:#08090c;z-index:14;display:none;overflow:auto;padding:16px 14px 30px}
+#autop h2{margin:0;font-size:19px;flex:1}
+#autop .sec{background:var(--card);border-radius:12px;padding:12px;margin-top:12px}
+#autop h3{margin:0 0 6px;font-size:15px}
+#autop table{width:100%;border-collapse:collapse;font-size:13px}
+#autop td{padding:4px 2px;border-top:1px solid #262a33}
+#autop td.n{text-align:right;white-space:nowrap;color:#c9d0db}
+#autop .em{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #262a33;font-size:13px}
+#autop .em div{flex:1;min-width:0}
+#autop .em b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#autop .em span{color:var(--mut);font-size:12px}
+#autop .em button{background:#173d2b;color:#7be0a8;border:0;border-radius:8px;padding:7px 9px;font-size:12px;white-space:nowrap}
+#autop .big{width:100%;border:0;border-radius:11px;padding:13px;font-size:15px;font-weight:700;color:#fff;margin-top:8px}
+#autop label{display:flex;gap:9px;align-items:center;font-size:14px;margin-top:10px}
+#autop label input{width:22px;height:22px}
+</style></head>
+<body>
+<header>
+  <div class="row">
+    <h1>📧 Mail Swipe</h1>
+    <a class="icon" href="/spending" style="text-decoration:none">💰</a>
+    <button class="icon" id="autobtn" style="background:#3b2a5a">🧹 Auto</button>
+    <button class="icon" id="undobtn" disabled>↩ Undo</button>
+    <button class="icon" id="helpbtn" aria-label="Help">?</button>
+  </div>
+  <div class="row" style="margin-top:7px">
+    <select id="cat" title="Gmail tab">
+      <option value="promotions">Promotions</option><option value="social">Social</option>
+      <option value="updates">Updates</option><option value="forums">Forums</option>
+      <option value="primary">Primary</option><option value="all">All mail</option>
+      <option value="money">💳 Money mail: alerts &amp; offers</option>
+    </select>
+    <select id="aif" title="AI filter"><option value="">🤖 All</option></select>
+    <select id="sort" title="Order"><option value="size">Biggest</option><option value="n">Most emails</option><option value="old">Oldest</option><option value="ai">🤖 Surest trash first</option></select>
+  </div>
+  <div class="sum"><span id="sum" style="display:contents"></span><span id="qchip"></span></div>
+  <div id="idx"></div>
+  <div id="tabs"></div>
+</header>
+
+<div id="stage">
+  <div id="card"></div>
+  <div class="stamp" id="s-keep">✅ Keep</div>
+  <div class="stamp" id="s-trash">🗑 Trash all</div>
+  <div class="stamp" id="s-old">🕰 Trash old</div>
+  <div id="list"></div>
+  <div id="empty"></div>
+</div>
+
+<div id="bar">
+  <button class="act" id="bt">🗑 Trash all<small id="bt-s"></small><span class="ai">🤖 suggested</span><span class="k">swipe ← · key ←</span></button>
+  <button class="act" id="bo">🕰 Trash old<small id="bo-s"></small><span class="ai">🤖 suggested</span><span class="k">swipe ↓ · key ↓</span></button>
+  <button class="act" id="bk">✅ Keep<small>never ask again</small><span class="ai">🤖 suggested</span><span class="k">swipe → · key →</span></button>
+</div>
+<div id="skiprow"><button id="doai" title="Do what the AI suggests (key A)">🤖 Do suggestion (A)</button><button id="bulkai" style="display:none"></button><button id="skip">Skip (S) ›</button></div>
+<div id="job"><div class="box"><b id="jobt">Working…</b><div class="bar"><i id="jobbar"></i></div><div id="jobm" style="font-size:13px;color:#c9d0db"></div></div></div>
+
+<div id="autop">
+  <div class="row"><h2>🧹 AI auto-clean</h2><button class="icon" id="autoclose">✕ Close</button></div>
+  <p style="color:var(--mut);font-size:13px;margin:8px 0 0">The AI decides every email. It keeps orders, receipts, statements, anything with an attachment, mail from people, mail you sent, starred mail and senders you kept. It deletes promotions, newsletters and social pings, plus status alerts after 90 days, OTPs after 7 days and notices after 1 year. Everything goes to Gmail's Trash (30 days), and one ↩ Undo reverses a whole run.</p>
+  <div class="sec" id="autosum">Working it out…</div>
+  <div class="sec"><h3>🔎 Second-opinion check</h3><div id="autoaudit"></div></div>
+  <div class="sec"><h3>🛡 Your “keep this kind” rules (<span id="autorulesn">0</span>)</h3><div id="autorules"></div></div>
+  <div class="sec"><h3>🎲 Random sample of deletions</h3><p style="color:var(--mut);font-size:12.5px;margin:0">Tap <b>Keep this kind</b> on anything that shouldn't go. That whole pattern becomes a record and is never auto-deleted.</p><div id="autosample"></div>
+    <button class="icon" id="automore" style="margin-top:8px">🎲 Another 40</button></div>
+  <div class="sec"><h3>Run</h3>
+    <div id="autocheck"></div>
+    <button class="big" id="autorun" style="background:var(--trash)">🧹 Run auto-clean now</button>
+    <label><input type="checkbox" id="autodaily"> Run automatically every day (new mail, 4:30 am)</label>
+    <div id="autolast" style="color:var(--mut);font-size:12.5px;margin-top:6px"></div></div>
+</div>
+<div id="toast"><span id="tmsg"></span><button id="undo" hidden></button></div>
+<div id="busy"><div id="busymsg">Working…</div></div>
+<div class="modal" id="confirm"><div class="box">
+  <h3>⚠ This looks important</h3>
+  <p id="cmsg"></p>
+  <div class="btns"><button id="cno" style="background:#333946;color:#fff">Cancel</button><button id="cyes" style="background:var(--trash);color:#fff">Trash anyway</button></div>
+</div></div>
+
+<div id="help">
+  <h2>How Mail Swipe works</h2>
+  <p>Each card is <b>one sender</b> with all their emails grouped together, biggest space users first. One swipe deals with every email from that sender in the chosen Gmail tab.</p>
+  <div class="opt" style="border-color:var(--trash)"><span class="g">🗑</span><div>
+    <h3>Swipe left ← Trash all</h3>
+    <p>Moves every email from this sender to Gmail's Trash. Use for shops, newsletters, apps and spam you'll never read.</p></div></div>
+  <div class="opt" style="border-color:var(--old)"><span class="g">🕰</span><div>
+    <h3>Swipe down ↓ Trash old</h3>
+    <p>Trashes emails <b>older than 1 year</b> and keeps the recent ones. Good for services you still use (Swiggy, Amazon, Uber) whose old mail is just clutter.</p></div></div>
+  <div class="opt" style="border-color:var(--keep)"><span class="g">✅</span><div>
+    <h3>Swipe right → Keep</h3>
+    <p>Leaves everything as is and won't show this sender again. Use for people, banks, tax and anything you might need.</p></div></div>
+  <div class="keys">
+    <b>Safe by design:</b><br>
+    • Trash is Gmail's own Trash: recoverable for <b>30 days</b>, then Gmail empties it.<br>
+    • <b>↩ Undo</b> (top) reverses your last action, again and again, even after closing the page. The <b>Trashed</b> tab can restore any sender later.<br>
+    • <b>Starred</b> emails and emails <b>you sent</b> are never touched.<br>
+    • Senders that look like <b>bank / tax / insurance / ID / medical</b> get a red warning and ask before trashing.<br><br>
+    <b>🤖 AI suggestions:</b> every sender has been sorted by an AI into a category (Shopping, Banking, Social…) with a suggested action and a one-line reason, shown on the card. The suggested button gets a white ring. <b>🤖 Do suggestion</b> (key <kbd>A</kbd>) applies it. Use the <b>🤖 menu</b> (top) to show one category or one suggestion type, then <b>Accept all</b> applies every confident suggestion in that view at once (bank/tax-looking senders and unsure ones are left for you). One <b>↩ Undo</b> reverses the whole batch. The AI only saw sender names, counts and subject lines, never email bodies.<br><br>
+    <b>Skip</b> hides a sender for now (it's listed in the Kept &amp; skipped tab).<br>
+    <b>✋ Unsubscribe</b> on the card stops new mail. Most senders support one-click unsubscribe, which happens right here. Some get a short unsubscribe email sent from your Gmail. For the rest you get a link to their page. Spam is never unsubscribed, because that only confirms your address is real. Unsubscribing can't be undone. <b>Accept all</b> can also unsubscribe from every “trash all” sender in one go.<br>
+    <b>Keyboard:</b> <kbd>←</kbd> trash all · <kbd>↓</kbd> trash old · <kbd>→</kbd> keep · <kbd>S</kbd> skip · <kbd>Z</kbd> undo · <kbd>?</kbd> help<br>
+    <b>💳 Money mail</b> (in the tab menu): bank, card, broker and payment senders, with each email typed by the AI as a transaction alert, OTP, offer, notice or statement. Here, swipes and <b>📏 Trash by rule</b> only remove alerts (after 90 days), OTPs (after 7 days), offers and old notices. Statements, contract notes and tax papers are never touched.<br>
+    <b>Gmail tab menu</b> (top): start with Promotions, then Social and Updates.
+  </div>
+  <button id="gotit">Got it, start</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const enc=encodeURIComponent,esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mb=b=>!b?'0 MB':b>=1e9?(b/1e9).toFixed(2)+' GB':b>=1e6?(b/1e6).toFixed(1)+' MB':Math.max(1,Math.round(b/1e3))+' KB';
+const day=t=>new Date(t*1000).toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+const ago=t=>{const d=(Date.now()/1000-t)/86400;return d<1?'today':d<45?Math.round(d)+' days ago':d<700?Math.round(d/30)+' months ago':(d/365).toFixed(1)+' years ago'};
+let ulog=[];
+let all=[],queue=[],tab='review',busy=false,stats={},hdata={trashed:[],kept:[]};
+const card=$('card'),stage=$('stage');
+
+async function load(){
+  const [s,st,h]=await Promise.all([fetch('/senders?cat='+$('cat').value).then(r=>r.json()),fetch('/stats').then(r=>r.json()),fetch('/history').then(r=>r.json())]);
+  all=s;stats=st;hdata=h;ulog=await fetch('/unsub_log').then(r=>r.json()).catch(()=>[]);build();render();
+}
+const money=()=>$('cat').value==='money';
+const VIA=v=>v.money?'📏 money-mail rules':v.kind==='trash_old'?'🕰 trash old':'🗑 trash all';
+function marked(s){
+  const parts=[];
+  if(s.queued)parts.push(`<div>⏳ <b>Queued for deletion</b> (${VIA(s.queued)}${s.queued.money!==money()?', from the other view':''}). Gmail work is running in the background.</div>`);
+  if(s.still_sending)parts.push(`<div>✋ You unsubscribed ${ago(s.unsubbed.at)}, but <b>${s.still_sending} emails arrived since</b>. Unsubscribe didn't stick; trashing is the way.</div>`);
+  if(s.in_trash)parts.push(`<div>🗑 <b>${s.in_trash.n.toLocaleString()} emails already in Trash</b> · ${mb(s.in_trash.size)}${s.in_trash.kind?` · via ${VIA(s.in_trash)} ${ago(s.in_trash.at)}`:''}. The counts below are only what's left.</div>`);
+  return parts.length?`<div id="marked">${parts.join('')}</div>`:'';
+}
+const TYP={txn_alert:['💳 Transaction alerts','kept 90 days'],otp_security:['🔐 OTPs & login alerts','kept 7 days'],
+  marketing:['📣 Offers & marketing','not kept'],notice:['📌 Notices','kept 1 year'],record:['📄 Statements & records','always kept']};
+function typeBox(s){
+  const rows=Object.keys(TYP).filter(k=>s.types[k]).map(k=>`<div class="t"><span>${TYP[k][0]}: <b>${s.types[k].toLocaleString()}</b></span><span class="r">${TYP[k][1]}</span></div>`).join('');
+  return `<div id="typebox">${rows}<div class="r" style="margin-top:5px">📏 <b>Trash by rule</b> removes only what's past its keep time. 📄 Statements & records are never touched here.</div></div>`;
+}
+const AIL={trash_all:'🗑 Trash all',trash_old:'🕰 Trash old',keep:'✅ Keep',review:'🤔 Review'};
+const AICOL={trash_all:'var(--trash)',trash_old:'var(--old)',keep:'var(--keep)',review:'#7fb3ff'};
+function aiOptions(){
+  const base=all.filter(s=>!s.note&&s.trashable>0),cur=$('aif').value;
+  const n=f=>base.filter(f).length;
+  const acts=Object.keys(AIL).map(a=>`<option value="a:${a}">🤖 ${AIL[a]} (${n(s=>s.ai&&s.ai.action===a)})</option>`).join('');
+  const cats={};base.forEach(s=>{if(s.ai)cats[s.ai.category]=(cats[s.ai.category]||0)+1});
+  const co=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,k])=>`<option value="c:${esc(c)}">${esc(c)} (${k})</option>`).join('');
+  const none=n(s=>!s.ai);
+  $('aif').innerHTML=`<option value="">🤖 All suggestions</option><optgroup label="Suggested action">${acts}</optgroup><optgroup label="Category">${co}</optgroup>${none?`<option value="none">Not classified yet (${none})</option>`:''}`;
+  if([...$('aif').options].some(o=>o.value===cur))$('aif').value=cur;
+}
+function aiMatch(s){const v=$('aif').value;if(!v)return true;if(v==='none')return !s.ai;if(!s.ai)return false;
+  return v.startsWith('a:')?s.ai.action===v.slice(2):s.ai.category===v.slice(2)}
+function build(){
+  aiOptions();
+  queue=all.filter(s=>!s.note&&s.trashable>0&&aiMatch(s));
+  const k=$('sort').value,rank=s=>!s.ai?0:s.ai.action==='trash_all'?2+s.ai.conf:s.ai.action==='trash_old'?1+s.ai.conf:0;
+  queue.sort(k==='n'?(a,b)=>b.n-a.n:k==='old'?(a,b)=>a.last-b.last:k==='ai'?(a,b)=>rank(b)-rank(a)||b.size-a.size:(a,b)=>b.size-a.size);
+  bulkButton();
+}
+$('aif').onchange=()=>{build();render()};
+// senders a bulk accept would act on: confident, actionable, and not money/tax/ID-looking when trashing
+const bulkable=s=>s.ai&&s.ai.conf>=0.85&&['trash_all','trash_old','keep'].includes(s.ai.action)&&!(s.protect&&s.ai.action!=='keep')&&!(s.ai.action==='trash_old'&&!s.old);
+function bulkButton(){
+  const b=$('bulkai');
+  if(money()){const l=queue.filter(s=>s.old);b.style.display=l.length?'':'none';b.textContent=`📏 Rules for all ${l.length}`;return}
+  const list=queue.filter(bulkable);
+  b.style.display=$('aif').value&&$('aif').value!=='none'&&list.length?'':'none';
+  b.textContent=`🤖 Accept all ${list.length}`;
+}
+$('bulkai').onclick=async()=>{
+  if(money()){
+    const l=queue.filter(s=>s.old),em=l.reduce((x,s)=>x+s.old,0),sz=l.reduce((x,s)=>x+s.old_size,0);
+    if(!await ask(`Apply the keep rules to <b>${l.length}</b> money senders:<br><br>💳 transaction alerts older than 90 days<br>🔐 OTPs &amp; login alerts older than 7 days<br>📣 offers &amp; marketing (all)<br>📌 notices older than 1 year<br><br>That's <b>${em.toLocaleString()}</b> emails · <b>${mb(sz)}</b> to Gmail's Trash (30 days). 📄 Statements &amp; records are never touched. One ↩ Undo reverses it all.`,'Apply rules','var(--old)','📏 Money mail rules'))return;
+    const r=await post('/accept_rules',{senders:l.map(s=>s.sender)});
+    toast(`📏 ${r.queued} senders queued. Runs in the background.`,false);pollQueue();return load();
+  }
+  const list=queue.filter(bulkable),left=queue.length-list.length;
+  const g=a=>list.filter(s=>s.ai.action===a),em=a=>a==='trash_all'?g(a).reduce((x,s)=>x+s.trashable,0):g(a).reduce((x,s)=>x+s.old,0);
+  const uN=g('trash_all').filter(s=>s.unsub&&!(s.unsubbed&&s.unsubbed.status==='done')&&s.ai.category!=='Spam & scams').length;
+  const sz=a=>a==='trash_all'?g(a).reduce((x,s)=>x+s.size,0):g(a).reduce((x,s)=>x+s.old_size,0);
+  const ok=await ask(`Apply the AI's suggestion to <b>${list.length}</b> senders in this view:<br><br>
+    🗑 Trash all: <b>${g('trash_all').length}</b> senders · ${em('trash_all').toLocaleString()} emails · ${mb(sz('trash_all'))}<br>
+    🕰 Trash old: <b>${g('trash_old').length}</b> senders · ${em('trash_old').toLocaleString()} emails · ${mb(sz('trash_old'))}<br>
+    ✅ Keep: <b>${g('keep').length}</b> senders<br><br>
+    ${left?`${left} other senders stay for you to swipe (unsure, or bank/tax-looking).<br>`:''}Everything goes to Gmail's Trash (30 days). One ↩ Undo reverses the whole batch.
+    ${uN?`<label><input type="checkbox" id="bulkunsub" checked> Also unsubscribe from the ${uN} “trash all” senders that allow it (can't be undone)</label>`:''}`,'Apply all','var(--keep)','🤖 Accept AI suggestions');
+  const wantUnsub=!!($('bulkunsub')&&$('bulkunsub').checked);
+  if(!ok)return;
+  const r=await post('/accept_ai',{senders:list.map(s=>s.sender),cat:$('cat').value,unsub:wantUnsub});
+  if(!r.ok)return toast('⚠ '+r.error,false);
+  toast(`🤖 ${r.queued} senders queued${r.unsub?` (+${r.unsub} unsubscribes)`:''}. Runs in the background; keep swiping.`,false);
+  pollQueue();load();
+};
+let qTimer=null,qWas=0;
+async function pollQueue(){
+  clearTimeout(qTimer);
+  let q;try{q=await fetch('/queue').then(r=>r.json())}catch(e){return}
+  const c=$('qchip');
+  if(q.trash_pending||q.unsub_pending||q.current){
+    c.className='';c.style.display='inline-block';
+    c.textContent=`⏳ Background: ${q.trash_pending} to trash${q.unsub_pending?` · ${q.unsub_pending} to unsubscribe`:''}${q.failed?` · ⚠ ${q.failed} failed`:''}`;
+    qWas=1;qTimer=setTimeout(pollQueue,1500);
+  }else if(qWas){
+    qWas=0;c.className=q.failed?'bad':'ok';c.textContent=q.failed?`⚠ ${q.failed} failed: ${q.last_error||''}`:`✅ Background work done${q.unsubbed?` · ${q.unsubbed} unsubscribed`:''}`;
+    c.style.display='inline-block';setTimeout(()=>{if(!qWas)c.style.display='none'},6000);
+    load();
+  }else c.style.display='none';
+}
+let cancelledN=0;
+// ---- auto-clean panel ----
+const tdate=t=>new Date(t*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+const TYN={txn_alert:'status alert',otp_security:'OTP/login',marketing:'promotion',notice:'notice',record:'record'};
+function emRow(m,why){return `<div class="em"><div><b>${esc(m.subject||'(no subject)')}</b><span>${esc(m.sender)} · ${tdate(m.date)} · ${esc(m.category||'')}${m.type?' · '+TYN[m.type]:''}${why?' · ⚠ '+esc(why):''}</span></div><button data-id="${esc(m.id)}">Keep this kind</button></div>`}
+function wireKeep(el){el.querySelectorAll('.em button').forEach(b=>b.onclick=async()=>{
+  if(b.dataset.undo){   // second tap: undo this rule
+    b.disabled=true;const r=await post('/auto/unkeep_pattern',{sender:b.dataset.s,tmpl:b.dataset.t});
+    b.disabled=false;delete b.dataset.undo;b.textContent='Keep this kind';b.style.background='';b.style.color='';
+    toast(r.ok?'↩ Rule removed. That kind can be auto-deleted again.':'⚠ '+(r.error||'failed'),false);autoSum();return}
+  b.disabled=true;const r=await post('/auto/keep_pattern',{id:b.dataset.id});b.disabled=false;
+  if(!r.ok){b.textContent='⚠';return}
+  b.dataset.undo=1;b.dataset.s=r.sender;b.dataset.t=r.pattern;b.textContent=`↩ Undo (kept ${r.emails})`;b.style.background='#3a2a2a';b.style.color='#ffc9c9';
+  toast(`✅ “${r.pattern}” from ${r.sender} is now kept (${r.emails} emails). Tap ↩ Undo to reverse.`,false);autoSum()})}
+async function autoRules(){
+  const o=await fetch('/auto/overrides').then(r=>r.json());
+  $('autorules').innerHTML=o.length?o.map(x=>`<div class="em"><div><b>${esc(x.tmpl)}</b><span>${esc(x.sender)} · ${x.emails} emails · added ${ago(x.at)}${x.prev?' · was '+TYN[x.prev]:''}</span></div><button data-s="${esc(x.sender)}" data-t="${esc(x.tmpl)}" style="background:#3a2a2a;color:#ffc9c9">Remove</button></div>`).join('')
+    :'<p style="color:var(--mut);font-size:13px;margin:0">None yet. Tap “Keep this kind” on an email below to add one.</p>';
+  $('autorules').querySelectorAll('button').forEach(b=>b.onclick=async()=>{b.disabled=true;
+    const r=await post('/auto/unkeep_pattern',{sender:b.dataset.s,tmpl:b.dataset.t});
+    toast(r.ok?'↩ Rule removed.':'⚠ '+(r.error||'failed'),false);autoRules();autoSum()});
+  $('autorulesn').textContent=o.length;
+}
+async function autoSum(){
+  autoRules();
+  const p=await fetch('/auto/plan').then(r=>r.json());
+  const tbl=(rows)=>`<table>${rows.slice(0,14).map(([k,n,sz])=>`<tr><td>${esc(k)}</td><td class="n">${n.toLocaleString()}</td><td class="n">${mb(sz)}</td></tr>`).join('')}</table>`;
+  $('autosum').innerHTML=`<h3>Plan right now</h3><p style="font-size:14px;margin:4px 0">🗑 Trash <b>${p.trash_n.toLocaleString()}</b> emails · <b>${mb(p.trash_size)}</b><br>✅ Keep <b>${p.keep_n.toLocaleString()}</b> emails · ${mb(p.keep_size)}</p>
+    <details><summary style="color:#7fb3ff">What goes</summary>${tbl(p.trash)}</details><details><summary style="color:#7fb3ff">What stays, and why</summary>${tbl(p.keep)}</details>`;
+  const a=p.audit;
+  $('autoaudit').innerHTML=a?`<p style="font-size:13px;margin:0 0 4px">A stricter AI re-checked <b>${a.sampled}</b> random planned deletions (${ago(a.at)}) and flagged <b>${a.flagged.length}</b>. Most are kinds your rules delete on purpose (old card alerts, old login notices); keep any you disagree with.</p>`+a.flagged.map(f=>emRow(f,f.why)).join(''):'<p>No check run yet.</p>';
+  wireKeep($('autoaudit'));
+  $('autodaily').checked=!!p.daily;
+  $('autolast').textContent=p.last?`Last run ${ago(p.last.at)}: ${p.last.n.toLocaleString()} emails, ${mb(p.last.size)}.`:'Never run yet.';
+  $('autorun').textContent=checked?`🧹 Checked, run it (${p.trash_n.toLocaleString()} emails · ${mb(p.trash_size)})`:`🔍 Final check before running (${p.trash_n.toLocaleString()} emails · ${mb(p.trash_size)})`;
+}
+async function autoSample(){const s=await fetch('/auto/sample?n=40&side=trash').then(r=>r.json());$('autosample').innerHTML=s.map(m=>emRow(m)).join('');wireKeep($('autosample'))}
+$('autobtn').onclick=()=>{checked=false;$('autocheck').innerHTML='';$('autop').style.display='block';autoSum();autoSample()};
+$('autoclose').onclick=()=>{$('autop').style.display='none';load()};
+$('automore').onclick=autoSample;
+$('autodaily').onchange=async()=>{const r=await post('/auto/daily',{on:$('autodaily').checked});toast(r.daily?'🧹 Auto-clean will run every day at 4:30 am.':'Daily auto-clean is off.',false)};
+let checked=false;
+const CHK={words:['📄 Looks important','Subject mentions an invoice, receipt, booking, statement, tax, policy, salary, ID…'],
+  recent:['🕒 Very recent','Arrived in the last 3 days. You may not have read it yet.'],
+  cats:['🛡 Sensitive sender','Sender is filed as people, tax, health, insurance, jobs or education.']};
+async function finalCheck(){
+  const b=$('autorun');b.disabled=true;b.textContent='🔍 Checking every planned deletion…';
+  const c=await fetch('/auto/precheck').then(r=>r.json());b.disabled=false;
+  const warn=Object.values(c.groups).reduce((a,g)=>a+g.n,0);
+  $('autocheck').innerHTML=`<div class="sec" style="border:1px solid ${warn?'#b8860b':'#2e7d32'}"><h3>${warn?`⚠ Final check: ${warn.toLocaleString()} of ${c.trash_n.toLocaleString()} deletions need a look`:'✅ Final check: nothing looks important'}</h3>
+    ${Object.entries(c.groups).filter(([k,g])=>g.n).map(([k,g])=>`<details ${k==='words'?'open':''}><summary><b>${CHK[k][0]}</b>: ${g.n.toLocaleString()} emails, ${g.patterns} kinds</summary>
+      <p style="color:var(--mut);font-size:12.5px;margin:4px 0">${CHK[k][1]} Tap <b>Keep this kind</b> to save them.${g.patterns>40?' Showing the newest 40 kinds.':''}</p>${g.examples.map(m=>emRow(m)).join('')}</details>`).join('')}
+    <p style="font-size:12.5px;color:var(--mut)">Biggest senders in this run: ${c.top.map(([s,n])=>`${esc(s)} (${n})`).join(', ')}</p></div>`;
+  wireKeep($('autocheck'));checked=true;b.textContent=`🧹 Checked, run it (${c.trash_n.toLocaleString()} emails · ${mb(c.trash_size)})`;autoSum();
+}
+$('autorun').onclick=async()=>{
+  if(!checked)return finalCheck();
+  if(!await ask('Run AI auto-clean now? Everything in the plan goes to Gmail\'s Trash (recoverable for 30 days). One ↩ Undo reverses the whole run.','Run it','var(--trash)','🧹 Auto-clean'))return;
+  const r=await post('/auto/run',{});toast(`🧹 Queued ${r.emails.toLocaleString()} emails from ${r.senders} senders. Runs in the background.`,false);
+  checked=false;$('autocheck').innerHTML='';$('autop').style.display='none';pollQueue();load();
+};
+async function watchJob(){
+  $('job').style.display='flex';
+  for(;;){
+    const j=await fetch('/job').then(r=>r.json());
+    $('jobt').textContent=j.title||'Working…';$('jobbar').style.width=(j.total?j.done/j.total*100:0)+'%';
+    $('jobm').textContent=`${j.done||0} / ${j.total||0} senders · ${(j.emails||0).toLocaleString()} emails${j.size?' · '+mb(j.size):''}${j.failed?` · ⚠ ${j.failed} failed`:''}`;
+    if(!j.running){$('job').style.display='none';
+      toast(j.error?'⚠ '+j.error:`✅ ${j.title}: ${j.done} senders, ${(j.emails||0).toLocaleString()} emails restored${cancelledN?`, and ${cancelledN} queued senders cancelled`:''}${j.failed?`, ⚠ ${j.failed} failed (try again)`:''}.`,false);cancelledN=0;
+      tab='review';return load()}
+    await new Promise(r=>setTimeout(r,800));
+  }
+}
+$('cat').onchange=()=>{localStorage.cat=$('cat').value;load()};
+$('sort').onchange=()=>{localStorage.sort=$('sort').value;build();render()};
+
+function header(){
+  if(stats.live===undefined)return;   // first load not finished yet
+  const L={trash_all:'🗑 Trash all',trash_old:'🕰 Trash old',keep:'✅ Keep',skip:'⏭ Skip',bulk:'🤖 Bulk accept of',unnote:'↩',unsub:'✋ Unsubscribe'};
+  $('undobtn').disabled=!stats.actions;$('undobtn').title=stats.last?`Undo: ${L[stats.last.kind]} ${stats.last.sender} · key Z`:'Nothing to undo';
+  $('sum').innerHTML=`<span>🗑 Trashed <b>${stats.trashed}</b> emails · <b>${mb(stats.trashed_size)}</b> freed</span><span>📬 ${stats.live} left · ${mb(stats.live_size)}</span>`;
+  $('idx').style.display=stats.indexing?'block':'none';
+  $('idx').textContent=`⏳ Still reading your mailbox: ${(stats.live+stats.trashed).toLocaleString()} of ~${stats.total.toLocaleString()} emails so far. Counts grow as it goes; reload the page later for more.`;
+  const tabs=[['review','📥 To review',queue.length],['kept','✅ Kept',hdata.kept.length],['trashed','🗑 Trashed',hdata.trashed.length],['unsub','✋ Unsubs',ulog.length]];
+  $('tabs').innerHTML=tabs.map(([k,t,n])=>`<button data-t="${k}" class="${tab===k?'on':''}"><b>${n}</b>${t}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+}
+function render(){
+  header();
+  const review=tab==='review';
+  ['bar','skiprow'].forEach(i=>$(i).style.display=review?'':'none');
+  $('list').style.display=review?'none':'block';
+  if(!review){card.style.display='none';$('empty').style.display='none';return renderList()}
+  const s=queue[0];
+  card.style.transition='none';card.style.transform='';stamps(0,0);
+  if(!s){card.style.display='none';$('empty').style.display='flex';
+    $('empty').innerHTML=`<h2>Nothing left here 🎉</h2><p>Every sender in <b>${$('cat').selectedOptions[0].text}</b>${$('aif').value?' matching the 🤖 filter':''} is dealt with.</p><p>Try another Gmail tab or 🤖 filter from the top menus.</p>`;
+    ['bt','bo','bk'].forEach(i=>$(i).disabled=true);return}
+  $('empty').style.display='none';card.style.display='block';card.scrollTop=0;
+  const cats=Object.entries(s.cats).map(([k,v])=>`<span class="chip">${k} ${v}</span>`).join('');
+  card.innerHTML=`
+    <div class="who">${esc(s.name||s.sender.split('@')[0])}</div>
+    <div class="addr">${esc(s.sender)}</div>
+    ${marked(s)}
+    ${money()?typeBox(s):''}
+    ${!money()&&s.ai?`<div id="aibox" style="border-color:${AICOL[s.ai.action]}">🤖 Suggests <b class="a" style="color:${AICOL[s.ai.action]}">${AIL[s.ai.action]}</b> · ${Math.round(s.ai.conf*100)}% sure
+      <div class="why">${esc(s.ai.reason)}</div><div class="meta">${esc(s.ai.category)} › ${esc(s.ai.sub)}</div></div>`:money()?'':'<div id="aibox" style="opacity:.6">🤖 Not classified yet</div>'}
+    ${s.protect&&!money()?`<div class="warn">⚠ Looks like <b>money / tax / ID</b> mail (matched “${esc(s.protect)}”). Usually worth keeping, or only trashing old.</div>`:''}
+    <div class="grid">
+      <div class="st"><b>${s.n.toLocaleString()}</b><span>emails</span></div>
+      <div class="st"><b>${mb(s.size)}</b><span>space used</span></div>
+      <div class="st"><b>${ago(s.last)}</b><span>latest email</span></div>
+      <div class="st"><b>${day(s.first)}</b><span>oldest email</span></div>
+      <div class="st"><b>${Math.round(s.unread/s.n*100)}%</b><span>never opened</span></div>
+      <div class="st"><b>${s.old.toLocaleString()}</b><span>${money()?'past keep time':'older than 1 year'}</span></div>
+    </div>
+    <div class="chips">${cats}${s.starred?`<span class="chip">⭐ ${s.starred} starred (kept)</span>`:''}</div>
+    <ul class="subj"><h4>Latest subjects</h4>${s.subjects.map(t=>`<li>${esc(t)||'<i>(no subject)</i>'}</li>`).join('')}</ul>
+    <div class="links">
+      ${s.unsubbed&&s.unsubbed.status==='done'?`<button disabled class="unsubok">✅ Unsubscribed ${ago(s.unsubbed.at)}</button>`
+        :s.ai&&s.ai.category==='Spam & scams'?`<button disabled title="Unsubscribing from spam confirms your address">🚫 Spam: just trash</button>`
+        :s.unsub?`<button id="unsubbtn">✋ Unsubscribe</button>`:`<button disabled>No unsubscribe option</button>`}
+      <a href="https://mail.google.com/mail/u/0/#search/${enc('from:'+s.sender)}" target="_blank" rel="noopener">📨 Open in Gmail</a>
+    </div>`;
+  $('bt-s').textContent=`${s.trashable.toLocaleString()} · ${mb(s.size)}`;
+  $('bo-s').textContent=s.old?`${s.old.toLocaleString()} · ${mb(s.old_size)}`:'none that old';
+  $('bt').disabled=false;$('bk').disabled=false;$('bo').disabled=!s.old;
+  if($('unsubbtn'))$('unsubbtn').onclick=async e=>{e.stopPropagation();const b=$('unsubbtn');b.disabled=true;b.textContent='Unsubscribing…';
+    const r=await post('/unsubscribe',{sender:s.sender});
+    if(r.ok){b.className='unsubok';b.textContent=r.method==='email'?'✅ Unsubscribed (email sent)':'✅ Unsubscribed';toast(`✋ Unsubscribed from ${s.name||s.sender}. New mail should stop within a few days.`,false)}
+    else if(r.url){b.outerHTML=`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">✋ Open their unsubscribe page</a>`;toast('This sender needs one click on their own page.',false)}
+    else{b.textContent='⚠ '+(r.detail||'Failed');toast('⚠ Unsubscribe failed: '+(r.detail||''),false)}};
+  if(money()){
+    $('bt').firstChild.textContent='🗑 Trash these ';$('bo').firstChild.textContent='📏 Trash by rule ';
+    $('bt').classList.remove('sugg');$('bk').classList.remove('sugg');$('bo').classList.toggle('sugg',!!s.old);
+    $('doai').disabled=!s.old;$('doai').textContent=s.old?'📏 Trash by rule (A)':'📏 Nothing past its keep time';
+    return;
+  }
+  $('bt').firstChild.textContent='🗑 Trash all ';$('bo').firstChild.textContent='🕰 Trash old ';
+  const sg=s.ai&&s.ai.action;$('bt').classList.toggle('sugg',sg==='trash_all');$('bo').classList.toggle('sugg',sg==='trash_old');$('bk').classList.toggle('sugg',sg==='keep');
+  $('doai').disabled=!sg||sg==='review';$('doai').textContent=sg&&sg!=='review'?`🤖 ${AIL[sg]} (A)`:'🤖 No clear suggestion';
+}
+function renderList(){
+  const L=$('list');
+  if(tab==='unsub'){
+    const still=all.filter(s=>s.still_sending);
+    const okN=ulog.filter(u=>u.ok).length;
+    L.innerHTML=`<p style="color:var(--mut);font-size:12.5px;margin:2px 2px 8px">Every unsubscribe attempt is logged with the sender's raw unsubscribe headers, so failures can be fixed later. ${okN} worked · ${ulog.length-okN} didn't.</p>`+
+      (still.length?`<p style="color:#ffb4b4;font-size:13px;margin:4px 2px 8px">⚠ Still sending after unsubscribing: ${still.map(s=>`<b>${esc(s.name||s.sender)}</b> (${s.still_sending})`).join(', ')}</p>`:'')+
+      (ulog.length?ulog.map(u=>`<div class="li"><div><b>${u.ok?'✅':'⚠'} ${esc(u.sender)}</b><span>${esc(u.method)} · ${esc(u.detail)} · ${ago(u.at)}${u.response&&!u.ok?` · “${esc(u.response.slice(0,80))}”`:''}</span></div>
+        ${u.target&&u.target.startsWith('http')&&!u.ok?`<button onclick="window.open('${esc(u.target)}','_blank','noopener')">Open page</button>`:''}</div>`).join('')
+        :'<p style="color:var(--mut);text-align:center;margin-top:40px">No unsubscribe attempts yet.</p>');
+    return;
+  }
+  if(tab==='trashed'){
+    L.innerHTML=hdata.trashed.length?`<p style="color:var(--mut);font-size:12.5px;margin:2px 2px 8px">Restore puts those emails back exactly where they were. Gmail empties Trash after 30 days.</p>`+hdata.trashed.map(a=>`
+      <div class="li"><div><b>${esc(a.name||a.sender)}</b><span>${a.kind==='trash_old'?'🕰 old only':'🗑 all'} · ${a.n} emails · ${mb(a.size)} · ${ago(a.at)}</span></div>
+      <button data-id="${a.id}">↺ Restore</button></div>`).join(''):'<p style="color:var(--mut);text-align:center;margin-top:40px">Nothing trashed yet.</p>';
+    L.querySelectorAll('button').forEach(b=>b.onclick=()=>restore(+b.dataset.id));
+  }else{
+    L.innerHTML=hdata.kept.length?hdata.kept.map(k=>`
+      <div class="li"><div><b>${k.sender.startsWith('money:')?'💳 '+esc(k.sender.slice(6)):esc(k.sender)}</b><span>${k.decision==='keep'?'✅ kept':k.decision==='trimmed'?'🕰 kept recent':'⏭ skipped'} · ${ago(k.at)}</span></div>
+      <button data-s="${esc(k.sender)}">↩ Review again</button></div>`).join(''):'<p style="color:var(--mut);text-align:center;margin-top:40px">No kept or skipped senders yet.</p>';
+    L.querySelectorAll('button').forEach(b=>b.onclick=async()=>{await post('/act',{sender:b.dataset.s,kind:'unnote'});toast('Back in To review: '+b.dataset.s,false);await load()});
+  }
+}
+function post(u,d){return fetch(u,{method:'POST',body:JSON.stringify(d)}).then(r=>r.json())}
+function stamps(dx,dy){const c=v=>Math.max(0,Math.min(1,v/110)),h=Math.abs(dx)>dy;
+  $('s-keep').style.opacity=h?c(dx):0;$('s-trash').style.opacity=h?c(-dx):0;$('s-old').style.opacity=h?0:c(dy)}
+function ask(msg,yes='Trash anyway',col='var(--trash)',title='⚠ This looks important'){return new Promise(res=>{$('cmsg').innerHTML=msg;$('confirm').style.display='flex';
+  $('cyes').textContent=yes;$('cyes').style.background=col;$('confirm').querySelector('h3').textContent=title;
+  $('cyes').onclick=()=>{$('confirm').style.display='none';res(true)};$('cno').onclick=()=>{$('confirm').style.display='none';res(false)}})}
+async function decide(kind){
+  const s=queue[0];if(busy||!s||tab!=='review')return;
+  if(kind==='trash_old'&&!s.old)return toast('No emails older than 1 year from this sender.',false);
+  if(kind.startsWith('trash')&&s.protect&&!(money()&&kind==='trash_old')){
+    const n=kind==='trash_all'?s.trashable:s.old;
+    if(!await ask(`<b>${esc(s.name||s.sender)}</b> matched “${esc(s.protect)}”, which usually means bank, tax, insurance or ID mail.<br><br>Trash <b>${n}</b> ${kind==='trash_old'?'emails older than 1 year':'emails'} anyway? (Recoverable for 30 days.)`)){spring();return}
+  }
+  busy=true;
+  const lab=money()&&kind==='trash_old'?'📏 Trashed by rule':money()&&kind==='trash_all'?'🗑 Trashed alerts & offers':{trash_all:'🗑 Trashed all',trash_old:'🕰 Trashed old',keep:'✅ Kept',skip:'⏭ Skipped'}[kind];
+  card.style.transition='transform .22s ease-in';
+  card.style.transform=kind==='keep'?'translateX(130%) rotate(16deg)':kind==='trash_all'?'translateX(-130%) rotate(-16deg)':kind==='trash_old'?'translateY(110%)':'translateY(-110%)';
+  stamps(kind==='keep'?200:kind==='trash_all'?-200:0,kind==='trash_old'?200:0);
+  const n=kind==='trash_all'?s.trashable:kind==='trash_old'?s.old:0;
+  queue.shift();setTimeout(()=>{busy=false;render()},200);   // next card right away; Gmail work runs in the background
+  let r;try{r=await post('/act',{sender:s.sender,kind,cat:$('cat').value})}catch(e){r={ok:false,error:String(e)}}
+  if(r.error){toast('⚠ Failed: '+r.error,false);await load();return}
+  toast(kind.startsWith('trash')?`${lab}: ${s.name||s.sender} · ${n.toLocaleString()} emails · ${mb(kind==='trash_all'?s.size:s.old_size)} (in background)`:`${lab}: ${s.name||s.sender}`);
+  pollQueue();load();
+}
+function spring(){card.style.transition='transform .2s';card.style.transform='';stamps(0,0)}
+async function restore(id){
+  $('busymsg').textContent='Restoring…';$('busy').style.display='flex';
+  const r=await post('/undo',{id});$('busy').style.display='none';
+  toast(r.ok?(r.n?`↺ Restored ${r.n} emails`:'↺ Undone, back in To review'):`⚠ Restore incomplete (${r.failed} failed). Try again.`,false);await load();
+}
+async function undo(){
+  if(busy)return;busy=true;$('busymsg').textContent='Undoing…';$('busy').style.display='flex';
+  const r=await post('/undo_last',{});$('busy').style.display='none';busy=false;
+  if(r.none)return toast('Nothing to undo',false);
+  if(r.cancelled&&!r.job){toast(`↩ Cancelled before it ran: ${r.sender}. Back in To review.`,false);tab='review';return load()}
+  if(r.job){cancelledN=r.cancelled||0;return watchJob()}
+  const L={trash_all:'🗑 Trash all',trash_old:'🕰 Trash old',keep:'✅ Keep',skip:'⏭ Skip'};
+  toast(r.ok?`↩ Undid ${L[r.kind]}: ${r.sender}${r.n?` · ${r.n} emails back`:''}. It's back in To review.`:`⚠ Undo incomplete (${r.failed} failed). Tap Undo again.`,false);
+  tab='review';await load();
+}
+let tt;function toast(m,u=true){$('tmsg').textContent=m;$('toast').style.display='flex';clearTimeout(tt);tt=setTimeout(()=>$('toast').style.display='none',4500)}
+$('undo').onclick=undo;$('undobtn').onclick=undo;$('bt').onclick=()=>decide('trash_all');$('bo').onclick=()=>decide('trash_old');$('bk').onclick=()=>decide('keep');$('skip').onclick=()=>decide('skip');
+const doAI=()=>{const s=queue[0];if(!s)return;if(money()){if(s.old)decide('trash_old');return}if(s.ai&&s.ai.action!=='review')decide(s.ai.action)};$('doai').onclick=doAI;
+
+// swipe: horizontal or downward drag; vertical scroll inside the card still works when the card is scrolled
+let sx=null,sy=0,dx=0,dy=0,lock=null;
+card.addEventListener('pointerdown',e=>{if(busy||e.target.closest('a,button'))return;sx=e.clientX;sy=e.clientY;dx=dy=0;lock=null;card.style.transition='none'});
+card.addEventListener('pointermove',e=>{if(sx===null)return;dx=e.clientX-sx;dy=e.clientY-sy;
+  if(!lock&&Math.hypot(dx,dy)>12)lock=Math.abs(dx)>Math.abs(dy)?'h':(dy>0&&card.scrollTop<=0?'v':'scroll');
+  if(lock==='scroll'||!lock)return;
+  if(lock==='h'){card.style.transform=`translateX(${dx}px) rotate(${dx/20}deg)`;stamps(dx,0)}
+  else{card.style.transform=`translateY(${Math.max(0,dy)}px)`;stamps(0,Math.max(0,dy))}
+  card.setPointerCapture(e.pointerId)});
+card.addEventListener('pointerup',()=>{if(sx===null)return;sx=null;
+  if(lock==='h'&&Math.abs(dx)>90)decide(dx>0?'keep':'trash_all');
+  else if(lock==='v'&&dy>90)decide('trash_old');else spring()});
+card.addEventListener('pointercancel',()=>{sx=null;spring()});
+
+onkeydown=e=>{if($('help').style.display==='block'){if(e.key==='Enter'||e.key==='Escape')closeHelp();return}
+  if($('confirm').style.display==='flex'){if(e.key==='Escape')$('cno').click();if(e.key==='Enter')$('cyes').click();return}
+  ({ArrowLeft:()=>decide('trash_all'),ArrowDown:()=>decide('trash_old'),ArrowRight:()=>decide('keep'),s:()=>decide('skip'),a:doAI,z:undo,'?':openHelp})[e.key]?.()};
+function openHelp(){$('help').style.display='block'}
+function closeHelp(){$('help').style.display='none';localStorage.seenMailHelp3=1}
+$('helpbtn').onclick=openHelp;$('gotit').onclick=closeHelp;
+if(localStorage.cat)$('cat').value=localStorage.cat;if(localStorage.sort)$('sort').value=localStorage.sort;
+if(!localStorage.seenMailHelp3)openHelp();
+load();pollQueue();setInterval(()=>{if(stats.indexing&&!busy&&tab==='review')fetch('/stats').then(r=>r.json()).then(s=>{stats=s;header()})},15000);
+</script>
+</body></html>

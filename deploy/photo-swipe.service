@@ -1,0 +1,11 @@
+[Unit]
+Description=Photo Swipe (Drive backup triage)
+After=network-online.target syncthing@@@USER@@.service
+[Service]
+User=@@USER@@
+WorkingDirectory=@@REPO@@/photo-swipe
+EnvironmentFile=@@CONFIG@@
+ExecStart=/usr/bin/python3 @@REPO@@/photo-swipe/server.py @@BACKUP_DIR@@ 8091
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target

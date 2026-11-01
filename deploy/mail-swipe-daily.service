@@ -1,0 +1,10 @@
+[Unit]
+Description=Mail Swipe daily: index new mail, classify, money-mail rules
+After=mail-swipe.service
+[Service]
+Type=oneshot
+User=@@USER@@
+WorkingDirectory=@@REPO@@/mail-swipe
+EnvironmentFile=@@CONFIG@@
+Environment=PYTHON=@@PYTHON@@
+ExecStart=@@REPO@@/mail-swipe/daily.sh

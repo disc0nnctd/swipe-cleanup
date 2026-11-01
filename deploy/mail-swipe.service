@@ -1,0 +1,11 @@
+[Unit]
+Description=Mail Swipe (Gmail sender triage)
+After=network-online.target
+[Service]
+User=@@USER@@
+WorkingDirectory=@@REPO@@/mail-swipe
+EnvironmentFile=@@CONFIG@@
+ExecStart=@@PYTHON@@ @@REPO@@/mail-swipe/server.py 8092
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
